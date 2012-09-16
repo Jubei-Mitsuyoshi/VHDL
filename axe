@@ -4,13 +4,7 @@
 	_AXE_DIR="/root/axebuilder"
 	_AXE_PACKAGER_NAME="axe_i7_optimised"
 	_AXE_FULL_DEBUG=0
-	
-	
-	
-	
-	
-	
-	
+	_AXE_GIT_URL=('https://bitbucket.org/braindamaged/udev.git')
 	VAR="_AXE_MULTILIB_PRESENT"
 	VAR="_AXE_INSTALL_MODE_PARAM"
 	VAR="_AXE_DEPS_MET_YES"
@@ -110,6 +104,34 @@
 
 	
 #start of common functions that may appear in other functions hence need to be declared first************************************************************************
+
+function save_settings_reboot()
+{
+
+	#input argument is settings filename
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of git clone into axe packages"
+	
+	
+_gitroot=('https://bitbucket.org/braindamaged/udev.git')
+_gitname=('udev')
+		 
+build() {
+  msg "Connecting to GIT server...."
+
+  if [[ -d $_gitname ]] ; then
+    cd $_gitname && git pull origin
+    msg "The local files are updated."
+  else
+    git clone "$_gitroot" "$_gitname"
+  fi
+
+  msg "GIT checkout done or server timeout"
+  msg "Starting make..."
+
+  rm -rf "$srcdir/$_gitname-build"
+  git clone "$srcdir/$_gitname" "$srcdir/$_gitname-build"
+  cd "$srcdir/$_gitname-build"
 
 
 function save_settings_reboot()
@@ -2550,6 +2572,13 @@ function help()
 		fi
 
 	fi
+	
+	
+	#fetch lsd packages from git
+	
+	
+	
+	
 	
 	#start of recursive non-toolchain build
 	
