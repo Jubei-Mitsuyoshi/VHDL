@@ -1,0 +1,2704 @@
+#!/bin/bash
+
+	#vars 
+	_AXE_DIR="/root/axebuilder"
+	_AXE_PACKAGER_NAME="axe_i7_optimised"
+	_AXE_FULL_DEBUG=0
+	
+	
+	
+	
+	
+	
+	
+	VAR="_AXE_MULTILIB_PRESENT"
+	VAR="_AXE_INSTALL_MODE_PARAM"
+	VAR="_AXE_DEPS_MET_YES"
+	_AXE_DEPS_MET_YES=0
+	VAR="_AXE_CORES"
+	_AXE_CORES=0
+	VAR="_AXE_TMP_CHAR"
+	VAR="_AXE_TMP_NUM"
+	VAR="_AXE_DEBUG_MODE_YES"
+	VAR="_AXE_GCC_VER"
+	VAR="_AXE_TOOLCHAIN_BUILD_SEQUENCE"
+	VAR="_AXE_LINUX_RESUME_YES"
+	_AXE_LINUX_RESUME_YES=0
+	VAR="_AXE_TOOLCHAIN_RESTART_YES"
+	_AXE_TOOLCHAIN_RESTART_YES=0
+	VAR="_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT"
+	VAR="_AXE_GLIBC_REP"
+	_AXE_GLIBC_REP=1
+	VAR="_AXE_GCC_REP"
+	_AXE_GCC_REP=1
+	VAR="_AXE_BINUTILS_REP"
+	_AXE_BINUTILS_REP=1
+	VAR="_AXE_LIBTOOL_REP"
+	_AXE_LIBTOOL_REP=1
+	VAR="_AXE_LIBLTDL_REP"
+	_AXE_LIBLTDL_REP=1
+	VAR="_AXE_MULTILIB_SUFFIX"
+	_AXE_MULTILIB_SUFFIX=""
+	
+	export FORCE_UNSAFE_CONFIGURE=1
+	
+	
+	#calculate subdirs
+	_AXE_CHROOT_BUILD_DIR="$_AXE_DIR/axechrootbuilds"
+	_AXE_REPO_DIR="$_AXE_DIR/axerepo"
+	_AXE_HDD_BUILD_DIR="$_AXE_DIR/axehddbuild"
+	_AXE_RAM_BUILD_DIR="/tmp/axebuild"
+	_AXE_LOGS_DIR="$_AXE_DIR/axebuildlogs"
+	_AXE_GOOD_BUILD_LOGS_DIR="$_AXE_LOGS_DIR/sucsesfulbuildlogs"
+	_AXE_FAIL_BUILD_LOGS_DIR="$_AXE_LOGS_DIR/failedbuildlogs"
+	_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR="$_AXE_GOOD_BUILD_LOGS_DIR/packagesrun1"
+	_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR="$_AXE_GOOD_BUILD_LOGS_DIR/packagesrun2"
+	_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR="$_AXE_FAIL_BUILD_LOGS_DIR/packagesrun1"
+	_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR="$_AXE_FAIL_BUILD_LOGS_DIR/packagesrun2"
+	_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR="$_AXE_GOOD_BUILD_LOGS_DIR/installfunction"
+	_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR="$_AXE_FAIL_BUILD_LOGS_DIR/installfunction"
+	
+	
+	txtred='\e[0;31m' # red
+	txtgrn='\e[0;32m' # green
+	txtylw='\e[0;33m' # yellow
+	txtblu='\e[0;34m' # blue
+	txtpur='\e[0;35m' # purple
+	txtcyn='\e[0;36m' # cyan
+	txtwht='\e[0;37m' # white
+	bldred='\e[1;31m' # red - Bold
+	bldgrn='\e[1;32m' # green
+	bldylw='\e[1;33m' # yellow
+	bldblu='\e[1;34m' # blue
+	bldpur='\e[1;35m' # purple
+	bldcyn='\e[1;36m' # cyan
+	bldwht='\e[1;37m' # white
+	txtund=$(tput sgr 0 1) # Underline
+	txtbld=$(tput bold) # Bold
+	txtrst='\e[0m' # Text reset
+	
+	
+	# Feedback indicators
+	_AXE_INFO_MODE=${bldwht}INFO--${txtrst}
+	_AXE_PKG_UPDATE_MODE=${bldblu}UPDATE--${txtrst}
+	_AXE_FUCKUP_MODE=${bldred}FUCK!--##--##--##--${txtrst}
+	_AXE_DEBUG_MODE=${bldgrn}DEBUG--${txtrst}
+	_AXE_INSTALL_MODE=${bldcyn}INSTALL--${txtrst}
+	_AXE_BLOCK_MODE=${bldpur}BLOCK--${txtrst}
+	_AXE_FINALISE_MODE=${bldylw}FINAL-SECTION--${txtrst}
+	
+	
+#start of pre-run section****************************************************************************************************************************************
+
+	
+	
+	#make me some room on the screen
+	echo -e "\n"
+	echo -e "\n"
+	
+	# Check if root
+	if [[ $(whoami) != root ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_FUCKUP_MODE} you must be some kind of root to even get my attention !  Goodbye !"
+		echo -e "${_AXE_FUCKUP_MODE} press${bldwht} any key ${txtrst} to continue"
+		read -n1 -s
+		exit
+	fi
+	
+	
+#end of pre-run section********************************************************************************************************************************************
+
+	
+#start of common functions that may appear in other functions hence need to be declared first************************************************************************
+
+
+function save_settings_reboot()
+{
+
+	#input argument is settings filename
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of saving settings to settings file"
+
+	echo "_AXE_DEBUG_MODE_YES=$_AXE_DEBUG_MODE_YES" >> $_AXE_DIR/$1
+	echo "_AXE_TOOLCHAIN_BUILD_SEQUENCE=$_AXE_TOOLCHAIN_BUILD_SEQUENCE" >> $_AXE_DIR/$1
+	echo "_AXE_LINUX_RESUME_YES=$_AXE_LINUX_RESUME_YES" >> $_AXE_DIR/$1
+	echo "_AXE_XORG_YES=$_AXE_XORG_YES" >> $_AXE_DIR/$1
+	
+	echo -e "${_AXE_BLOCK_MODE} End of saving settings to settings file"
+}
+
+
+function load_settings_reboot()
+{
+	#input argument is settings filename
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of load settinmgs from settings file"
+
+	if [[ -s "$_AXE_DIR/$1" ]]; then
+		source $_AXE_DIR/$1
+	else
+		echo -e "${_AXE_FUCKUP_MODE} settings file $1 not found using default settings"
+	fi
+	
+	rm -f $_AXE_DIR/$1
+	
+	echo -e "${_AXE_BLOCK_MODE} End of load settinmgs from settings file"
+}
+
+
+function reboot_continue()
+{
+
+	#we need to reeboot the pc into the new linux kernel
+	
+	
+	if [[ $_AXE_XORG_YES -eq 0 ]]; then 
+		# write restsrt command to /etc/profile
+		echo "axe" >> /etc/profile
+		#save needed settings
+		_AXE_LINUX_RESUME_YES=1
+		save_settings_reboot linux-reboot-auto.settings
+		shutdown -r now
+	else
+		echo -e "${_AXE_BLOCK_MODE} ok i now need to reboot your pc since you are running in an xwindows environment you need to do this yourself"
+		echo -e "${_AXE_BLOCK_MODE} so press any key wait, for your pc to reboot, then run me again"
+		echo -e "${_AXE_BLOCK_MODE} press${bldwht} any key ${txtrst} to continue and reboot your pc"
+		read -n1 -s
+		#save needed settings
+		_AXE_LINUX_RESUME_YES=1
+		save_settings_reboot linux-reboot-manual.settings
+		
+		shutdown -r now
+	fi
+	
+
+}
+
+
+function check_makepkg_valid()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of makepkg check"
+	#check that my tag is in makepkg and also decide who modified it me or the human
+	cat /etc/makepkg.conf | grep "#AXE modified this file" > "$_AXE_DIR/scratch"
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		echo -e "${_AXE_INFO_MODE} well looking promissing i found the tag in makpkg.conf it says i modified the file"
+		_AXE_HAS_MODIFIED_MAKEPKG=1
+	else
+		_AXE_HAS_MODIFIED_MAKEPKG=0
+	fi
+	
+	cat /etc/makepkg.conf | grep "#THE HUMAN modified this file" > "$_AXE_DIR/scratch"
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		echo -e "${_AXE_INFO_MODE} well looking promissing i found the tag in makpkg.conf it says the human modified the file"
+		_AXE_HUMAN_MODIFIED_MAKEPKG=1
+	else
+		_AXE_HUMAN_MODIFIED_MAKEPKG=0
+	fi
+
+	
+	#check if makepkg is as i left it after my system setup
+	
+	if [[ $_AXE_HAS_MODIFIED_MAKEPKG -eq 1 ]]; then
+		#check if makepkg is same as my backup
+		cmp /etc/makepkg.conf $_AXE_DIR/makepkg.conf.axemodified
+		if [[ $? -eq 0 ]]; then
+			echo -e "${_AXE_INFO_MODE} good as far as i can tell you have not altered makepkg.conf since i setup the system"
+		else
+			echo -e "${_AXE_FUCKUP_MODE}HEY someone , or some other script , has altered makepkg.conf since i first modified it"
+			echo -e "${_AXE_FUCKUP_MODE}do you want me to use my original backup and continue ? i am assuming most of my system files have been untouched"
+			echo -e "${_AXE_FUCKUP_MODE}and this little hickup is due to me having been ctrlc_ed during a later compile phase where i am compiling with -O3"		
+			echo -e "${_AXE_FUCKUP_MODE}press${bldwht} y ${txtrst}to continue and use my backup or any other key to just ignore the situation" 
+			read -n1 _AXE_TMP_CHAR
+			if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+				echo -e "\n"
+				cp -pf $_AXE_DIR/makepkg.conf.axemodified /etc/makepkg.conf
+			else
+				echo -e "${_AXE_INFO_MODE} ok ignoring any makepkg.conf changes, hope you know what your doing good luck"
+				echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue"
+				read -n1 -s
+			fi
+		fi
+	fi
+	if [[ $_AXE_HUMAN_MODIFIED_MAKEPKG -eq 1 ]]; then
+		#check if makepkg is as i left it after my system setup
+		cmp /etc/makepkg.conf $_AXE_DIR/makepkg.conf.humanmodified
+		if [[ $? -eq 0 ]]; then
+			echo -e "${_AXE_INFO_MODE} good as far as i can tell you have not altered makepkg.conf since i setup the system"
+		else
+			echo -e "${_AXE_FUCKUP_MODE}HEY someone , or some other script, has altered /etc/makepkg.conf since you first modified it"
+			echo -e "${_AXE_FUCKUP_MODE}do you want me to use my original backup of your handywork and continue ? i am assuming most of my system files have been untouched"
+			echo -e "${_AXE_FUCKUP_MODE}and this little hickup is someones brainfart, by the way this is the same makepkg.conf that you chose to modify for youself"		
+			echo -e "${_AXE_FUCKUP_MODE}press${bldwht} y ${txtrst}to continue and use my backup of the humans efforts or any other key to just ignore the situation" 
+			read -n1 _AXE_TMP_CHAR
+			if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+				echo -e "\n"
+				cp -pf $_AXE_DIR/makepkg.conf.humanmodified /etc/makepkg.conf
+			else
+				echo -e "${_AXE_INFO_MODE} ok ignoring any makepkg.conf changes, hope you know what your doing good luck"
+				echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue"
+				read -n1 -s
+			fi
+		fi
+	fi
+		
+	if [[ $_AXE_HUMAN_MODIFIED_MAKEPKG -eq 0 && $_AXE_HAS_MODIFIED_MAKEPKG -eq 0 ]]; then
+		echo -e "${_AXE_FUCKUP_MODE}FOR FUCK SAKE, someone or some script has really done a number on makpkg.conf my tag is missing or corrupted"	
+		echo -e "${_AXE_FUCKUP_MODE}so i cant even give you the choice of using a backup, well i could check $_AXE_DIR to see what type of"	
+		echo -e "${_AXE_FUCKUP_MODE}backup i am carrying and give you the choice from there, but im not fuckin going to !! you can sort this mess out youself :)"	
+		echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue but i seariously suggest you ctrl c and quit, then check makepkg"
+		read -n1 -s
+	fi 
+	
+	echo -e "${_AXE_BLOCK_MODE} End of makepkg check"
+}
+
+
+function reset_toolchain()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of reset toolchain"
+
+	echo -e "${_AXE_FUCKUP_MODE}well Huston we have a problem :) one of the toolchain components have bugged out during the build, this is a majour fuck up !!!"
+	echo -e "${_AXE_FUCKUP_MODE}this unfortunatly is not unusuall with Arch, more and more toolchain build failiures kept emerrging, hence i can only advise you to try again"
+	echo -e "${_AXE_FUCKUP_MODE}do you want to restart the toolchain build or reset your toolchain to arch standard (then you can run me again )"		
+	echo -e "${_AXE_FUCKUP_MODE}press${bldwht} y ${txtrst}to restart the toolchain builds ${bldwht}any other key${txtrst} to reset your toolchain to arch standard then shutdown" 
+	read -n1 _AXE_TMP_CHAR
+	if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+		_AXE_TOOLCHAIN_RESTART_YES=1
+	else
+		pacman -Syy
+		pacman -S linux-api-headers glibc libtool$_AXE_MULTILIB_SUFFIX binutils$_AXE_MULTILIB_SUFFIX gcc$_AXE_MULTILIB_SUFFIX gcc-ada$_AXE_MULTILIB_SUFFIX 	gcc-fortran$_AXE_MULTILIB_SUFFIX gcc-go$_AXE_MULTILIB_SUFFIX gcc-libs$_AXE_MULTILIB_SUFFIX gcc-objc$_AXE_MULTILIB_SUFFIX
+	fi
+	
+	#tidy up
+	cat "$_AXE_LOGS_DIR/build-toolchain-log" >> $_AXE_LOGS_DIR/build-toolchain-fail.log
+	echo "" > $_AXE_LOGS_DIR/build-toolchain-log
+	echo -e "${_AXE_BLOCK_MODE} End of reset toolchain"
+}
+
+
+function linux_config_backup()
+{
+
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of backing up your modified kernal config"
+
+	cp -p $_AXE_RAM_BUILD_DIR/linux/config "$_AXE_DIR/kernal_config_backup"
+	cp -p $_AXE_RAM_BUILD_DIR/linux/config.x86_64 "$_AXE_DIR/kernal_config.x86_64_backup"
+
+	echo -e "${_AXE_BLOCK_MODE} End of backing up your modified kernal config"
+
+}
+
+function linux_config_restore_ram()
+{
+
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of restoring your modified kernal config"
+
+	cp -p $_AXE_DIR/kernal_config_backup "$_AXE_RAM_BUILD_DIR/linux/config"
+	cp -p $_AXE_DIR/kernal_config.x86_64_backup "$_AXE_RAM_BUILD_DIR/linux/config.x86_64"
+
+	echo -e "${_AXE_BLOCK_MODE} End of restoring your modified kernal config"
+
+}
+
+function linux_config_restore_hdd()
+{
+
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of restoring your modified kernal config"
+
+	cp -p $_AXE_DIR/kernal_config_backup "$_AXE_HDD_BUILD_DIR/linux/config"
+	cp -p $_AXE_DIR/kernal_config.x86_64_backup "$_AXE_HDD_BUILD_DIR/linux/config.x86_64"
+
+	echo -e "${_AXE_BLOCK_MODE} End of restoring your modified kernal config"
+
+}
+
+function linux_nconfig()
+{
+	#alter linux PKGINFO
+	sed -i 's/#make nconfig/make nconfig/' "$_AXE_RAM_BUILD_DIR/linux/PKGBUILD"
+		
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}show $_AXE_RAM_BUILD_DIR/linux/PKGBUILD"
+		read -n1 -s
+		nano "$_AXE_RAM_BUILD_DIR/linux/PKGBUILD"
+	fi
+	
+
+}
+
+function check_pkg_tag()
+{
+	#first argument is pkg name
+	#now check if passed argument has taken the PACKEGER variable, if not add it to the build-fail list
+	
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "$1" > "$_AXE_DIR/scratch"
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		echo "$1" >> "$_AXE_DIR/build-fail.list"
+		echo "$1 not a build fail but the package is refusing to take the packeger variable $(date)" >> "$_AXE_DIR/build-exclude.list"
+		echo "$1 is not taking the PACKAGER variable" >> "$_AXE_DIR/packager-reject.list"
+	fi
+
+}
+
+
+
+function unmask_toolchain_upgrades()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} delete masking entries from pacman.conf "
+	
+	if [[ $_AXE_MULTILIB_PRESENT -eq 1 ]]; then
+	
+		sed -i '/IgnorePkg=glibc//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-glibc//' /etc/pacman.conf
+		sed -i '/IgnorePkg=libtool-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=libltdl//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-libltdl//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-ada-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-fortran-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-go-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-obj-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-libs-multilib//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-gcc-libs//' /etc/pacman.conf
+		sed -i '/IgnorePkg=binutils-multilib//' /etc/pacman.conf
+		
+	else
+	
+		sed -i '/IgnorePkg=glibc//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-glibc//' /etc/pacman.conf
+		sed -i '/IgnorePkg=libtool//' /etc/pacman.conf
+		sed -i '/IgnorePkg=libltdl//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-libltdl//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-ada//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-fortran//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-go//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-obj//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc//' /etc/pacman.conf
+		sed -i '/IgnorePkg=gcc-libs//' /etc/pacman.conf
+		sed -i '/IgnorePkg=lib32-gcc-libs//' /etc/pacman.conf
+		sed -i '/IgnorePkg=binutils//' /etc/pacman.conf
+		
+	fi
+
+	echo -e "${_AXE_BLOCK_MODE} end of delete masking entries from pacman.conf "
+
+}
+
+
+function remask_toolchain_upgrades()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} adding masking entries to pacman.conf "
+
+	if [[ $_AXE_MULTILIB_PRESENT -eq 1 ]]; then
+		sed -i '/# axe is controlling toolchain upgrades now with your approval obviously,these lines prevent your toolchain from being updated,/aIgnorePkg=glibc\nIgnorePkg=lib32-glibc\nIgnorePkg=libtool-multilib\nIgnorePkg=libltdl\nIgnorePkg=lib32-libltdl\nIgnorePkg=gcc-ada-multilib\nIgnorePkg=gcc-fortran-multilib\nIgnorePkg=gcc-go-multilib\nIgnorePkg=gcc-obj-multilib\nIgnorePkg=gcc-multilib\nIgnorePkg=gcc-libs-multilib\nIgnorePkg=lib32-gcc-libs\nIgnorePkg=binutils-multilib\n' /etc/pacman.conf
+	else
+		sed -i '/# axe is controlling toolchain upgrades now with your approval obviously,these lines prevent your toolchain from being updated,/aIgnorePkg=glibc\nIgnorePkg=libtool\nIgnorePkg=libltdl\nIgnorePkg=gcc-ada\nIgnorePkg=gcc-fortran\nIgnorePkg=gcc-go\nIgnorePkg=gcc-obj\nIgnorePkg=gcc\nIgnorePkg=gcc-libs\nIgnorePkg=binutils\n' /etc/pacman.conf
+	fi
+
+	echo -e "${_AXE_BLOCK_MODE} end of adding masking entries to pacman.conf "
+
+}
+
+
+
+
+
+
+
+#start of debug functions section**************************************************************************************************************************************
+
+function debug_build_targets()
+{
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}show list packages to be built ie build-targets.list"
+		echo -e "${_AXE_DEBUG_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+		nano $_AXE_DIR/build-targets.list
+	fi
+}
+
+function debug_build_targets_final()
+{
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}show final build targets"
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+		nano $_AXE_DIR/build-targets-final.list
+	fi	
+}
+
+
+
+
+
+function debug_build_prospects()
+{	
+
+	#check output if  in debug mode
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}show list of installed packages not compiled  with #PACKEGER set"
+		echo -e "${_AXE_DEBUG_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+		nano $_AXE_DIR/build-prospects.list
+	fi
+
+}
+
+function debug_build_prospects_final()
+{	
+
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}show list of all installed packages minus any arch and lib32"
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+		nano $_AXE_DIR/build-prospects-final.list
+	fi
+
+}
+
+
+
+function debug_build_fail()
+{	
+
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}show cleaned up build-exclude.list ie build-fail.list"
+		echo -e "${_AXE_DEBUG_MODE} press${bldwht} any key ${txtrst}to continue"
+		read  -n1 -s
+		nano $_AXE_DIR/build-fail.list
+	fi
+
+}
+
+function debug_build_fail_final()
+{	
+
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}show cleaned up build-exclude.list"
+		echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+		nano $_AXE_DIR/build-fail-final.list
+	fi
+
+}
+
+
+function debug_build_manual()
+{	
+
+	#check output if in debug mode 
+	if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_DEBUG_MODE}show cleaned up build-manual.list ie those packages where user intervention cannot be avoided"
+		echo -e "${_AXE_DEBUG_MODE} press${bldwht} any key ${txtrst}to continue"
+		read  -n1 -s
+		nano $_AXE_DIR/build-manual-tmp.list
+	fi
+
+}
+
+function dev_debug()
+{	
+	#first argument is text to display
+	#second argument variable to display
+	#third argument txt file to display, with path
+
+
+	#check output if in debug mode 
+	if [[ $_AXE_FULL_DEBUG -eq 1 ]]; then
+		echo -e "\n"
+		if [[ "$2" ]]; then
+			echo -e "${_AXE_DEBUG_MODE} $2 has the value"
+			echo $"$2"
+		fi
+		echo "$1"
+		echo -e "${_AXE_DEBUG_MODE} press${bldwht} any key ${txtrst}to continue"
+		read  -n1 -s
+		if [[ "$3" ]]; then
+		echo -e "${_AXE_DEBUG_MODE}show file $3 "
+			nano $3
+			echo -e "${_AXE_DEBUG_MODE} press${bldwht} any key ${txtrst}to continue"
+			read  -n1 -s
+		fi
+	fi
+
+}
+
+
+
+
+
+#end of debug functions section**************************************************************************************************************************************
+
+
+#start of setup functions**************************************************************************************************************************************
+
+function intro()
+{	
+	echo -e "${_AXE_INFO_MODE} "
+	echo -e "${_AXE_PKG_UPDATE_MODE} "
+	echo -e "${_AXE_FUCKUP_MODE} "
+	echo -e "${_AXE_DEBUG_MODE} "
+	echo -e "${_AXE_TOOLCHAIN_UPDATE_MODE} "
+	echo -e "${_AXE_BLOCK_MODE} "
+	echo -e "${_AXE_FINALISE_MODE} "
+	echo -e "${_AXE_INFO_MODE} Hi I am  Arch Xtream rEbuilder"
+	echo -e "${_AXE_INFO_MODE} I am a BASH script ( written by a rather wierd individual ), my purpose is to rebuild your entire Arch system and gain all the benefits of "
+	echo -e "${_AXE_INFO_MODE} a fully optimised ( for your processor ) linux box. I have been written with $_AXE_PACKAGER_NAME processors in mind but with a little modification i can be used for other x86_64 processors"
+	echo -e "${_AXE_INFO_MODE} I am callex Xtream because unlike other similar tools i will rebuild your system in the most radical manner possible, i dont give a shit about how long the process takes "
+	echo -e "${_AXE_INFO_MODE} i just try to do the job right !"
+	echo -e "${_AXE_INFO_MODE} So to that end i rebuild the toolchain ala GENTOO/LFS or the directions given in the Arch gcc PKGCONFIG, i rebuild every package in the system, then i rebuild all the dependencies, then i rebuild the dependencies dependencies ect.."
+	echo -e "${_AXE_INFO_MODE} in a recursive manner untill EVERYTHING !! is rebuilt . Then i build all the installed packages one last time, this ensures EVERY package has been built with optimised dependencies"
+	echo -e "${_AXE_INFO_MODE} all the way down the dependency tree, i omit building packages with the architecture of ANY, and lib32 packages if using a mulitilib system"
+	echo -e "${_AXE_INFO_MODE} then i clean your system up and remove any created orphans, finally i give you the option of creating a local repo of the built packages, and perform a full tidy upof your system"
+	echo -e "${_AXE_INFO_MODE} As we all know Arch changes FAST so you will need to run me after each majour update you do to stay optimised, "
+	echo -e "${_AXE_INFO_MODE} i should be clever enough to take account of most eventualities but am not god so dont crucify me "
+	echo -e "${_AXE_INFO_MODE} please do not fuck with my config files ( located in $_AXE_DIR ) it will save you some build time if you leave them alone, unless you know what you are doing obviously !"
+	echo -e "${_AXE_INFO_MODE} I have been developed / tested on a G53sx $_AXE_PACKAGER_NAME laptop, with a bare ( base+base-devel) arch setup, but i should work on a Arch system in virtually any configuration"
+	echo -e "${_AXE_INFO_MODE} $_AXE_LOGS_DIR contains action and build logs that you might find usefull, i log all the builds and build fails, well i log everything just about "
+	echo -e "${_AXE_INFO_MODE} I have been developed in a pure root environment, run as logged in root user from the command line, i have no idea what happens if i am run from sudo or su"
+	echo -e "${_AXE_INFO_MODE} i support a custom list of packages you want excluding from the entire build process, it should be a text file callec build-exclude.list and placed in /root/"
+	echo -e "${_AXE_INFO_MODE} BEFORE i start the first time, on subsiquent runs i will ignore any further lists in that location, i parse the list ignoring comments and anything after the first space ( per line )"
+	echo -e "\n"
+	echo -e "${_AXE_INFO_MODE} for example"
+	echo -e "${_AXE_INFO_MODE} # some comment"
+	echo -e "${_AXE_INFO_MODE} package-name1 some coment some comment"
+	echo -e "${_AXE_INFO_MODE} package-name2 some coment some comment"
+	echo -e "${_AXE_INFO_MODE} ......"
+	echo -e "${_AXE_INFO_MODE} ......n"
+	echo -e "${_AXE_INFO_MODE} package-nameN some coment some comment"
+	echo -e "\n"
+	echo -e "${_AXE_INFO_MODE} if you want to make use of this feature quit out of this script now ( ctr C will quit you out of any of my dialogs ) then re-run me "
+	echo -e "${_AXE_INFO_MODE} talking of running, i should be coppied to /usr/bin/ then run from /root/ in a terminal ONLY, its most wise if using me in a developed arch system"
+	echo -e "${_AXE_INFO_MODE} to hit ctr alt F2 and log in as root from there, remember to kill any xservers and other servers before starting, then type aa-builder from there"
+#	echo -e "${_AXE_INFO_MODE} After a sucsessful toolchain build i will prevent further toolchain upgrades, gcc etc upgrades will not appear when you are using pacman"
+#	echo -e "${_AXE_INFO_MODE} the reason for this is that arch updates its toolchain in a VERY unsafe manner, gcc might get a version bump a few days before glibc or binutils"
+#	echo -e "${_AXE_INFO_MODE} for example, and on top of that every minor version is upgraded, which for gcc could mean a LOT of compiling which i feel is unneccesary"
+#	echo -e "${_AXE_INFO_MODE} so how do you update your toolchain ? well i give you the option of checking for updates, downloading toolchain updates, then recompiling"
+#	echo -e "${_AXE_INFO_MODE} your toolchain all automatically every time i am run, at the moment the descision when to update is yours, but in future versions i will take over"
+#	echo -e "${_AXE_INFO_MODE} and only update your toolchain on majour version bumps"
+#	echo -e "\n"
+	echo -e "${_AXE_INFO_MODE} some clever features above other dumb scripts"
+	echo -e "${_AXE_INFO_MODE} instead of passing -march=native i pass  the fully decoded string into makepkg.conf thus ensuring package makefiles obey the full architecture optimisations"
+	echo -e "${_AXE_INFO_MODE} if gcc fails to build in the ramdisk /tmp/ i attempt to build it from the hdd instead"
+	echo -e "${_AXE_INFO_MODE} if any section of the toolchain fails to rebuild i reset the toolchain to Arch standard, tidy up then quit"
+	echo -e "${_AXE_INFO_MODE} if a ,non-toolchain, package fails to build with the -O3 flag i try to build it with -O2 instead, then i try to build it from HDD with -O3 and -O2 if it still fails i try to build"
+	echo -e "${_AXE_INFO_MODE} it in a clean chroot environment, if it then fails to build i mark it as Arches fault and continue, which by the way happens with a quite a few pakages"
+	echo -e "${_AXE_INFO_MODE} i log EVERYTHING!!!!! if a package sucseeds build, if it fails, on either -O3 or -O2, from ram or hdd it all gets logged so you can investigate the cause of failure yourself"
+	echo -e "${_AXE_INFO_MODE} for every package i check if its in the arch repos, if not, i build it from the AUR with yaourt"
+	echo -e "${_AXE_INFO_MODE} there is lots more under the hood, open me up in a txt editor and check it out, i am written by what is effectivly a bash beginner, i am very easy to follow."
+	echo -e "${_AXE_INFO_MODE} well thats the end of my little waffle, now lets get down to work, first thing to do is update your system and fetch my needed packages "
+	echo -e "${_AXE_INFO_MODE} as part of this i will make sure you have archlinux.fr repo setup since currently i use yaourt to achieve AUR compatibility"
+	echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to start the setup section"
+	read -n1 -s
+}	
+
+
+function load_settings_startup()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of load startup settings"
+
+	if [[ -s "$_AXE_DIR/startup.settings" ]]; then
+		source $_AXE_DIR/startup.settings
+	else
+		echo -e "${_AXE_INFO_MODE} no startup settings found this is harmless"
+	fi
+	
+	echo -e "${_AXE_BLOCK_MODE} End of of load startup settings"
+}
+
+
+function multilib_check()
+{
+	#multilib check
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of multilib toolchain check"
+	#check for multilib toolchain
+	if [[ -s "/usr/lib32" ]]; then
+		echo -e "${_AXE_INFO_MODE} detected /usr/lib32, obviously assuming i am running on a multilib system"
+		_AXE_MULTILIB_PRESENT=1
+		_AXE_MULTILIB_SUFFIX="-multilib"
+	else
+		echo -e "${_AXE_INFO_MODE} did not detected /usr/lib32, obviously assuming i am running on a pure x64 system"
+		_AXE_MULTILIB_PRESENT=0
+		_AXE_MULTILIB_SUFFIX=""
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of multilib toolchain check"
+}
+
+function resume_check()
+{
+	#linux rebuild resume check
+	
+	cat /etc/profile | grep "axe" > "$_AXE_DIR/scratch"
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		if [[ ! -s "$_AXE_DIR/linux-reboot-auto.settings" ]]; then
+			echo -e "${_AXE_FUCKUP_MODE} well fucked up dude !!! have resumed from a auto restart and my settings file, which i saved before the reboot is missing."
+			echo -e "${_AXE_FUCKUP_MODE} thats really wierd, maybe you are multibooting and something fucked there ? anyway am going to quit now bye !"
+			echo -e "${_AXE_FUCKUP_MODE}press${bldwht} any key ${txtrst} to quit"
+			read -n1 -s
+			shutdown -h now
+		fi
+	fi
+
+
+	if [[ -s "$_AXE_DIR/linux-reboot-auto.settings" ]]; then
+		echo -e "${_AXE_INFO_MODE} we are resuming after builing the kernal and rebooting in auto mode"
+		echo -e "${_AXE_INFO_MODE} removing my entry from /etc/profile"
+		#get rid of that reboot entry
+		sed -i 's/axe//' /etc/profile
+		echo -e "${_AXE_INFO_MODE} loading settings from last run"
+		load_settings_reboot linux-reboot-auto.settings
+
+	fi
+		
+	if [[ -s "$_AXE_DIR/linux-reboot-manual.settings" ]]; then
+		echo -e "${_AXE_INFO_MODE} we are resuming after builing the kernal and manual reboot"
+		load_settings_reboot linux-reboot-manual.settings
+
+	fi
+	
+}
+
+
+function safe_upgrade()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of update packages in a safe toolchain friendly manner "
+	echo -e "\n"
+	echo -e "${_AXE_INFO_MODE} do you want to check for updates and update your system ?"
+	echo -e "${_AXE_INFO_MODE} to do this i will unmask your toolchain entries then mask them back up when finished, and give you some choices along the way"
+	echo -e "${_AXE_INFO_MODE} press${bldwht} y ${txtrst} to safe update, ${bldwht}ANY OTHER KEY${txtrst} not to bother"
+	read -n1 _AXE_TMP_CHAR
+	if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+	
+		cat /etc/pacman.conf | grep "IgnorePkg=gcc" > "$_AXE_DIR/scratch"
+		if [[ -s "$_AXE_DIR/scratch" ]]; then
+	
+	
+	
+	
+	unmask_toolchain_upgrades
+		pacman -Syu
+	fi
+	
+
+
+		echo -e "${_AXE_INFO_MODE} well looking promissing i found the tag in makpkg.conf it says i modified the file"
+		_AXE_HAS_MODIFIED_MAKEPKG=1
+	else
+		_AXE_HAS_MODIFIED_MAKEPKG=0
+	fi
+	
+	echo -e "${_AXE_BLOCK_MODE} End of update packages in a safe toolchain friendly manner "
+}
+	
+	
+function fetch_deps()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of fetch what i need to get the job done"	
+	
+	#lets check if deps have been met already
+	if [[ $_AXE_DEPS_MET_YES -eq 0 ]]; then 
+	
+		echo -e "\n"
+		echo -e "${_AXE_INFO_MODE} ok time to fetch all the progs i need to get the job done,  press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+	
+		if [[ $_AXE_MULTILIB_PRESENT -eq 0 ]]; then 
+			pacman -Syu
+			pacman -S --needed expac yaourt abs wget git subversion devtools sed grep nano diffutils base-devel linux-api-headers glibc expect tcl dejagnu
+		else
+			pacman -Syu
+			pacman -S --needed  expac yaourt abs wget git subversion devtools sed grep nano diffutils patch autoconf automake bison fakeroot flex m4 make pkg-config multilib-devel linux-api-headers glibc expect tcl dejagnu
+		fi
+		
+		echo "_AXE_DEPS_MET_YES=1" >> $_AXE_DIR/$1startup.settings
+		
+	fi
+	
+	echo -e "${_AXE_BLOCK_MODE} End of fetch what i need to get the job done"
+}
+
+
+function mode_select()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of user mode selection"
+	# mode selection
+	echo -e "${_AXE_INFO_MODE} do you want to disable debug mode checks ?"
+	echo -e "${_AXE_INFO_MODE} diabling debug checks will make the whole script prety much automated after makepkg.conf modification"
+	echo -e "${_AXE_INFO_MODE} press${bldwht} y ${txtrst} to go to disable debug checks, ${bldwht}ANY OTHER KEY${txtrst} to leave debug checks in place"
+	read -n1 _AXE_TMP_CHAR
+	if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+		_AXE_DEBUG_MODE_YES=0
+		echo -e "\n"
+	else
+		_AXE_DEBUG_MODE_YES=1
+		echo -e "\n"
+	fi
+	
+	
+	if [[ $_AXE_TOOLCHAIN_COMP_NEW_YES -eq 0 ]]; then
+		echo -e "${_AXE_INFO_MODE} all toolchain components already have the $_AXE_PACKAGER_NAME packager tag skipping toolchain sequence selection"
+		echo -e "\n"
+	else
+		_AXE_TOOLCHAIN_BUILD_SEQUENCE=100
+		while [[ $_AXE_TOOLCHAIN_BUILD_SEQUENCE -gt 2 ]]; do	
+			echo -e "${_AXE_INFO_MODE} Toolchain sequence setting ?"
+			echo -e "${_AXE_INFO_MODE} Your choices, at the present, are"
+			echo -e "${_AXE_INFO_MODE} ${bldwht} 0 ${txtrst} to select GENTOO / LFS extended toolchain build"
+			echo -e "${_AXE_INFO_MODE} which is sequence${bldwht} linux-api-headers -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> binutils$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX ->libtool$_AXE_MULTILIB_SUFFIX ->rebuild toolchain ${txtrst}"
+			echo -e "${_AXE_INFO_MODE} ${bldwht} 1 ${txtrst} to select ARCH extended toolchain build"
+			echo -e "${_AXE_INFO_MODE} which is sequence${bldwht} linux-api-headers -> glibc -> libtool$_AXE_MULTILIB_SUFFIX -> binutils$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX ->libtool$_AXE_MULTILIB_SUFFIX -> binutils$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> libtool$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX ${txtrst}"
+			echo -e "${_AXE_INFO_MODE} ${bldwht} 2 ${txtrst} to select MINIMUM GENTOO build toolchain build"
+			echo -e "${_AXE_INFO_MODE} which is sequence${bldwht} linux-api-headers -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> binutils$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX ->libtool$_AXE_MULTILIB_SUFFIX ${txtrst} "
+			echo -e "${_AXE_INFO_MODE} press${bldwht} 0 or 1 or 2${txtrst} to select build sequence"
+			read -n1 _AXE_TOOLCHAIN_BUILD_SEQUENCE
+			
+			case $_AXE_TOOLCHAIN_BUILD_SEQUENCE in
+				0) _AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT="linux-api-headers -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> binutils$_AXE_MULTILIB_SUFFIX -> gcc_AXE_MULTILIB_SUFFIX ->libtool_AXE_MULTILIB_SUFFIX ->rebuild toolchain" ;;
+				1) _AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT="linux-api-headers -> glibc -> libtool$_AXE_MULTILIB_SUFFIX -> binutils$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX ->libtool$_AXE_MULTILIB_SUFFIX -> binutils$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> libtool$_AXE_MULTILIB_SUFFIX -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX" ;;
+				2) _AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT="linux-api-headers -> gcc$_AXE_MULTILIB_SUFFIX -> libtool$_AXE_MULTILIB_SUFFIX -> glibc -> binutils$_AXE_MULTILIB_SUFFIX -> gcc_AXE_MULTILIB_SUFFIX ->libtool_AXE_MULTILIB_SUFFIX" ;;
+			esac
+			
+			if [[ $_AXE_TOOLCHAIN_BUILD_SEQUENCE -lt 3 ]]; then
+				echo -e "\n"
+				echo -e "${_AXE_INFO_MODE} you have chosen${bldwht} $_AXE_TOOLCHAIN_BUILD_SEQUENCE ${txtrst}"
+			else
+				echo -e "${_AXE_INFO_MODE} err wrong choice, read the blurb again mate !"
+				echo -e "\n"
+			fi
+		done
+	fi
+	
+	echo -e "${_AXE_INFO_MODE} finally i would like to know if you are running me from a xbased system or from a bare command line"
+	echo -e "${_AXE_INFO_MODE} the reason i need to know is that i cannot restart your pc and resume from where i left of, in a xbased terminal window"
+	echo -e "${_AXE_INFO_MODE} so when it comes to kernal rebuild time and subsiquent reboot you will have to rebbot yourself and call axe resumelinux1, if you are in an xwindow environment"
+	echo -e "${_AXE_INFO_MODE} press${bldwht} y ${txtrst} if you are running me from an xterminal window, ${bldwht}ANY OTHER KEY${txtrst} if running me from a cli-bash-login environment"
+	read -n1 _AXE_TMP_CHAR
+	if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+		_AXE_XORG_YES=1
+		echo -e "\n"
+	else
+		_AXE_XORG_YES=0
+		echo -e "\n"
+	fi
+	
+	
+	echo -e "${_AXE_BLOCK_MODE} End of user mode selection"
+
+}
+
+
+function _AXE_DIR_check()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of directory setup"
+	
+	#make _AXE_DIR if not present
+	if [[ ! -d "$_AXE_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_DIR"
+		mkdir -pv $_AXE_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR already present skipping"
+	fi
+	
+	#make _AXE_CHROOT_BUILD_DIR if not present
+	if [[ ! -d "$_AXE_CHROOT_BUILD_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_CHROOT_BUILD_DIR"
+		mkdir -pv $_AXE_CHROOT_BUILD_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_CHROOT_BUILD_DIR already present skipping"
+	fi
+	
+	#make _AXE_REPO_DIR if not present
+	if [[ ! -d "$_AXE_REPO_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_REPO_DIR"
+		mkdir -pv $_AXE_REPO_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_REPO_DIR already present skipping"
+	fi
+	
+	#make _AXE_RAM_BUILD_DIR if not present
+	if [[ ! -d "$_AXE_RAM_BUILD_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_RAM_BUILD_DIR"
+		mkdir -pv $_AXE_RAM_BUILD_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_RAM_BUILD_DIR already present skipping"
+	fi
+	
+	#make _AXE_HDD_BUILD_DIR if not present
+	if [[ ! -d "$_AXE_HDD_BUILD_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_HDD_BUILD_DIR"
+		mkdir -pv $_AXE_HDD_BUILD_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_HDD_BUILD_DIR already present skipping"
+	fi
+	
+	#make _AXE_LOGS_DIR if not present
+	if [[ ! -d "$_AXE_LOGS_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_LOGS_DIR"
+		mkdir -pv $_AXE_LOGS_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_LOGS_DIR already present skipping"
+	fi
+	
+	#make _AXE_GOOD_BUILD_LOGS_DIR if not present
+	if [[ ! -d "$_AXE_GOOD_BUILD_LOGS_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_GOOD_BUILD_LOGS_DIR"
+		mkdir -pv $_AXE_GOOD_BUILD_LOGS_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_GOOD_BUILD_LOGS_DIR already present skipping"
+	fi
+	
+	#make _AXE_FAIL_BUILD_LOGS_DIR if not present
+	if [[ ! -d "$_AXE_FAIL_BUILD_LOGS_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_FAIL_BUILD_LOGS_DIR"
+		mkdir -pv $_AXE_FAIL_BUILD_LOGS_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_FAIL_BUILD_LOGS_DIR already present skipping"
+	fi
+	
+	#make _AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR if not present
+	if [[ ! -d "$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR"
+		mkdir -pv $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR already present skipping"
+	fi
+	
+	#make _AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR if not present
+	if [[ ! -d "$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR"
+		mkdir -pv $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR already present skipping"
+	fi
+	
+	#make _AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR if not present
+	if [[ ! -d "$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR"
+		mkdir -pv $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR already present skipping"
+	fi
+	
+	#make _AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR if not present
+	if [[ ! -d "$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR"
+		mkdir -pv $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR already present skipping"
+	fi	
+	
+	#make _AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR if not present
+	if [[ ! -d "$_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR"
+		mkdir -pv $_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR already present skipping"
+	fi
+	
+	#make _AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR if not present
+	if [[ ! -d "$_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR" ]]; then
+		echo -e "${_AXE_INFO_MODE} creating $_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR"
+		mkdir -pv $_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR
+	else
+		echo -e "${_AXE_INFO_MODE} $_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR already present skipping"
+	fi
+	
+	echo -e "${_AXE_BLOCK_MODE} End of directory setup"
+}
+
+
+function toolchain_check()
+{
+
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc$_AXE_MULTILIB_SUFFIX" > "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc-ada$_AXE_MULTILIB_SUFFIX" > "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc-fortran$_AXE_MULTILIB_SUFFIX" > "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc-go$_AXE_MULTILIB_SUFFIX" > "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc-obj$_AXE_MULTILIB_SUFFIX" > "$_AXE_DIR/scratch"	
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "glibc" >> "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "libltdl" >> "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "libtool$_AXE_MULTILIB_SUFFIX" >> "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "gcc-libs$_AXE_MULTILIB_SUFFIX" >> "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "binutils$_AXE_MULTILIB_SUFFIX" >> "$_AXE_DIR/scratch"
+	expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "linux-api-headers" >> "$_AXE_DIR/scratch"
+	
+	
+	if [[ $_AXE_MULTILIB_PRESENT -eq 1 ]]; then
+	
+		expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "lib32-glibc" >> "$_AXE_DIR/scratch"
+		expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "lib32-libltdl" >> "$_AXE_DIR/scratch"
+		expac "%n %p" | grep -v "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "lib32-libltdl" >> "$_AXE_DIR/scratch"
+	
+	fi
+	
+
+	
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		if [[ -d "$_AXE_DIR/toolchainbackup" ]]; then
+			echo -e "${_AXE_INFO_MODE} ok detected that \n"
+			cat "$_AXE_DIR/scratch"
+			echo -e "${_AXE_INFO_MODE} has been updated or somehow lacks the $_AXE_PACKAGER_NAME tag "
+			echo -e "${_AXE_INFO_MODE} and also detacted you have a previous working optimised toolchain backed up"
+			echo -e "${_AXE_INFO_MODE} would you like me to restore that working toolchain and ignore any updates ?"
+			echo -e "${_AXE_INFO_MODE} by the way i cant do downgrades, if the backed up toolchain is considerably older than the current one"
+			echo -e "${_AXE_INFO_MODE} this opperation will crash out"
+			echo -e "${_AXE_INFO_MODE} press ${bldwht}y ${txtrst} to restore your backed up toolchain, any other key to not bother and rebuild from scratch this time round"
+			read -n1 _AXE_TMP_CHAR
+			if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+				cd "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+				pacman -U --noconfirm *.pkg.tar.xz
+				if [[ $? -eq 0 ]]; then
+					echo -e "${_AXE_INFO_MODE} as i warned something bummed this opperation, ok we will have to rebuild again"
+					_AXE_TOOLCHAIN_COMP_NEW_YES=1
+				else
+					echo -e "${_AXE_INFO_MODE} good the restore went well, we will not build the toolchain this time round"
+					_AXE_TOOLCHAIN_COMP_NEW_YES=0
+				fi
+			else
+				_AXE_TOOLCHAIN_COMP_NEW_YES=1
+			fi
+		else
+			echo -e "${_AXE_INFO_MODE} ok detected that the following toolchain components lack the $_AXE_PACKAGER_NAME tag "
+			cat "$_AXE_DIR/scratch"
+			echo -e "${_AXE_INFO_MODE} since i cant update individual components ( thats why its called a tool-chain ) we need to rebuild the whole thing again"
+			_AXE_TOOLCHAIN_COMP_NEW_YES=1
+		fi
+	else
+		_AXE_TOOLCHAIN_COMP_NEW_YES=0
+	fi
+}
+
+
+function check_multilib_repo_enabled()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of check that multilib repo enabled if a multilib system"
+	if [[ $_AXE_MULTILIB_PRESENT -eq 1 ]]; then
+		cat /etc/pacman.conf | grep "#\[multilib\]" > "$_AXE_DIR/scratch"
+		if [[ -s "$_AXE_DIR/scratch" ]]; then
+			echo -e "${_AXE_INFO_MODE} found that your multilib repo is commented out, the arch installer does this as standard, am enabling it"
+			#sed -i s/#\[multilib\]/[multilib]/ /etc/pacman.conf
+			#sed -i 's:#Include = /etc/pacman.d/mirrorlist:Include = /etc/pacman.d/mirrorlist:' /etc/pacman.conf
+			echo "#entry added by axe cos its too difficult to enable the entry above, you can remove this and uncomment the identical lines earlier in the file" >> /etc/pacman.conf
+			echo "[multilib]" >> /etc/pacman.conf
+			echo "SigLevel = PackageRequired" >> /etc/pacman.conf
+			echo "Include = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
+			echo "#end of axe entry" >> /etc/pacman.conf
+		fi
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of check that multilib repo enabled if a multilib system"
+	
+}
+
+
+function makepkg_backup()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of makepkg.conf backup"
+	if [[ -s "$_AXE_DIR/makepkg.conf.original" ]]; then
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/makepkg.conf.original already present skipping backup"
+		
+	else
+		#backup make.conf
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/makepkg.conf.original not found backing up to $_AXE_DIR/makepkg.conf.original"
+		cp -p /etc/makepkg.conf "$_AXE_DIR/makepkg.conf.original"
+	fi
+	
+	if [[ -s "/etc/makepkg.conf.axebackup" ]]; then
+		echo -e "${_AXE_INFO_MODE} /etc/makepkg.conf.axebackup already present skipping"
+	else
+		echo -e "${_AXE_INFO_MODE} /etc/makepkg.conf.axebackup not found backing up to makepkg.conf.axebackup"	
+		#backup make.conf
+		cp -p /etc/makepkg.conf /etc/makepkg.conf.axebackup
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of of makepkg.conf backup"
+}
+
+
+function pacman_backup()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of pacman.conf backup"
+	if [[ -s "$_AXE_DIR/pacman.conf.original" ]]; then
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/pacman.conf.original already present skipping"
+	else
+		#backup make.conf
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/pacman.conf.original not found backing up to $_AXE_DIR/pacman.conf.original"
+		cp -p /etc/pacman.conf "$_AXE_DIR/pacman.conf.original"
+	fi
+	
+	if [[ -s "/etc/pacman.conf.axebackup" ]]; then
+		echo -e "${_AXE_INFO_MODE} /etc/pacman.conf.axebackup already present skipping"
+	else
+		echo -e "${_AXE_INFO_MODE} /etc/pacman.conf.axebackup not found backing up to pacman.conf.axebackup"	
+		#backup make.conf
+		cp -p /etc/pacman.conf /etc/pacman.conf.axebackup
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of of pacman.conf backup"
+}
+
+
+
+function packages_backup()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of create list of currently installed packages"
+	#make backup of originally installed packages, if not already there, we will use this later
+	if [[ -s "$_AXE_DIR/original-installed-packages.list" ]]; then
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/original-installed-packages.list already there assuming i have been run again, skipping backup"
+	else
+		echo -e "${_AXE_INFO_MODE} writing all installed packages to $_AXE_DIR/original-installed-packages.list"
+		expac "%n"  > "$_AXE_DIR/original-installed-packages.list"
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of create list of currently installed packages"
+}
+
+
+function archlinuxfr_check()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of check for and create archlinuxfr repo entry in pacman.conf"
+	#check for archlinux.fr and write to pacman.conf if not there
+	cat /etc/pacman.conf | grep "archlinuxfr" > $_AXE_DIR/scratch
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		echo -e "${_AXE_INFO_MODE} an entry for archlinuxfr already exists------skipping"
+	else
+		echo -e "${_AXE_INFO_MODE} did not find an entry for archlinuxfr creating one"
+		echo "#entry added by AXE cos you dont have it and i need yaourt for AUR" >> /etc/pacman.conf
+		echo "[archlinuxfr]" >> /etc/pacman.conf
+		echo 'Server = http://repo.archlinux.fr/$arch' >> /etc/pacman.conf
+		echo "#end of AXE entry" >> /etc/pacman.conf
+	fi
+	echo -e "${_AXE_BLOCK_MODE} End of check for and create archlinuxfr repo entry in pacman.conf"
+}
+
+
+function build_mod_lists_check()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of check for and create build-exclude.list"
+	
+	#check for build-exclude.list in /root/ if not there make one to start off
+	if [[ -s "$_AXE_DIR/build-exclude.list" ]]; then
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/build-exclude.list already present skipping"
+	else
+		if [[ -s "/root/build-exclude.list" ]]; then
+			echo -e "${_AXE_INFO_MODE} found /root/build-exclude.list setting it up"
+			cp -p /root/build-exclude.list "$_AXE_DIR/build-exclude.list"
+			cp -p /root/build-exclude.list "$_AXE_DIR/build-exclude.list.original"
+			rm /root/build-exclude.list
+		else
+			echo -e "${_AXE_INFO_MODE} did not find /root/build-exclude.list creating base $_AXE_DIR/build.exclude.list"
+			echo "grub a known gcc4.7 fail" >> $_AXE_DIR/build-exclude.list
+		fi
+	fi
+	
+	#check for build-manual.list in /root/ if not there make one to start off
+	if [[ -s "$_AXE_DIR/build-manual.list" ]]; then
+		echo -e "${_AXE_INFO_MODE} $_AXE_DIR/build-manual.list already present skipping"
+	else
+		if [[ -s "/root/build-manual.list" ]]; then
+			echo -e "${_AXE_INFO_MODE} found /root/build-manual.list setting it up"
+			cp -p /root/build-manual.list "$_AXE_DIR/build-manual.list"
+			cp -p /root/build-manual.list "$_AXE_DIR/build-manual.list.original"
+			rm /root/build-manual.list
+		else
+			echo -e "${_AXE_INFO_MODE} did not find /root/build-manual.list creating base $_AXE_DIR/build.exclude.list"
+			echo "cuda-sdk can be a real problem if not manual" >> $_AXE_DIR/build-manual.list
+			echo "cuda-toolkit can be a real problem if not manual" >> $_AXE_DIR/build-manual.list
+		fi
+	fi
+	
+	echo -e "${_AXE_BLOCK_MODE} End of check for and create build-exclude.list"
+}
+
+function setup_makepkg()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of setup makepkg"
+	# setup makepkg.conf
+	# check tag there, if there then mods have already been done
+	cat /etc/makepkg.conf | grep "#AXE modified this file" > "$_AXE_DIR/scratch"
+	cat /etc/makepkg.conf | grep "#THE HUMAN modified this file" >> "$_AXE_DIR/scratch"
+
+	if [[ -s "$_AXE_DIR/scratch" ]]; then
+		echo -e "${_AXE_INFO_MODE} makepkg.conf already altered so lets check it for validity"
+		check_makepkg_valid
+	else
+		echo -e "${_AXE_INFO_MODE}this routine alters your makepkg.conf, if you have an original, unaltered makepkg.con, then you are all set to go,"
+		echo -e "${_AXE_INFO_MODE}otherwise modify this piece of code to suite" 
+		echo -e "${_AXE_INFO_MODE}press${bldwht} y ${txtrst} to let me do the altrerations    ANY OTHER key to skip and let you do makepkg.conf yourself"
+		read -n1 _AXE_TMP_CHAR
+		if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+			echo -e "\n"
+			#mark makepkg.conf as modified by axe
+			echo "#AXE modified this file $(date)" >> /etc/makepkg.conf
+		
+			#comment out current flags
+			sed -i 's/CFLAGS/#commented out by axe CFLAGS/' /etc/makepkg.conf
+			sed -i 's/CXXFLAGS/#commented out by axe CXXFLAGS/' /etc/makepkg.conf
+
+			#setup compiler flags
+	
+			_AXE_CFLAGS=$(echo "" | gcc -march=native -v -E - 2>&1 | grep cc1 | sed 's/^/CFLAGS="-O2 -pipe/' | sed 's:/usr/lib/gcc/x86_64-unknown-linux-gnu/4.7.1/cc1 -E -quiet -v - ::' | sed 's:--param :--param=:g')
+			_AXE_CXXFLAGS=$(echo "" | gcc -march=native -v -E - 2>&1 | grep cc1 | sed 's/^/CXXFLAGS="-O2 -pipe/' | sed 's:/usr/lib/gcc/x86_64-unknown-linux-gnu/4.7.1/cc1 -E -quiet -v - ::' | sed 's:--param :--param=:g')
+	
+			echo -e "${_AXE_INFO_MODE}at this point you need to decide what your compiler flags should be, i have detected your flags and can automatically add them, they are"
+			echo -e "${_AXE_INFO_MODE}$_AXE_CFLAGS" 
+			echo -e "${_AXE_INFO_MODE}$_AXE_CXXFLAGS" 
+			echo -e "${_AXE_INFO_MODE} but you may be more comfortable with -march=native which is what i used to calculate your flags, so im giving you the choice at this point"
+			echo -e "${_AXE_INFO_MODE}press${bldwht} m ${txtrst} to set CFLAGS and CXXFLAGS to -march=native   ${bldwht}ANY OTHER key${txtrst} to set CFLAGS and CXXFLAGS to $_AXE_CFLAGS"
+			read -n1 _AXE_TMP_CHAR
+			if [[ "$_AXE_TMP_CHAR" = "m" ]]; then
+				echo -e "\n"
+				sed -i "/#commented out by axe CFLAGS/aCFLAGS=\"-O2 -pipe -march=native -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2\"" /etc/makepkg.conf
+				sed -i "/#commented out by axe CXXFLAGS/aCXXFLAGS=\"-O2 -pipe -march=native -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2\"" /etc/makepkg.conf
+			else
+				sed -i "/#commented out by axe CFLAGS/a$_AXE_CFLAGS -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2\"" /etc/makepkg.conf
+				sed -i "/#commented out by axe CXXFLAGS/a$_AXE_CXXFLAGS -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2\"" /etc/makepkg.conf
+			fi
+	
+	
+			#add packager name 
+			sed -i 's/#PACKAGER="John Doe <john@doe.com>"/PACKAGER="axe_i7_optimised"/' /etc/makepkg.conf
+			
+			#get rid of all the checks with !check
+			sed -i 's/!ccache check/!ccache !check/' /etc/makepkg.conf
+	
+			#add makeflags
+			#work out how many cores
+			_AXE_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+			let _AXE_CORES=$_AXE_CORES+1
+			#make the change
+			sed -i 's/MAKEFLAGS="-j2"/MAKEFLAGS="jbtemp"/' /etc/makepkg.conf
+			sed -i s/jbtemp/-j$_AXE_CORES/ /etc/makepkg.conf
+		
+			#final check
+			echo -e "${_AXE_INFO_MODE} examin make.conf make sure changes are correct"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue"
+			read -n1 -s
+			nano /etc/makepkg.conf
+			
+			#backup modified makepkg.conf we are going to need it as a check for next time i am run
+			cp -p /etc/makepkg.conf "$_AXE_DIR/makepkg.conf.axemodified"
+		else
+			echo -e "${_AXE_INFO_MODE} ok you have chosen to make your own changes to makepkg.conf------ i will open it up in nano for you"
+			echo -e "${_AXE_INFO_MODE} when you are done i will mark the file as modified so we do not repeat this step, please do not remove my tag ,its bloody obvious what it is"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue"
+			read -n1 -s
+			nano /etc/makepkg.conf
+			echo "#THE HUMAN modified this file $(date)" >> /etc/makepkg.conf
+			#backup modified makepkg.conf we are going to need it to make sure update function works
+			cp -p /etc/makepkg.conf "$_AXE_DIR/makepkg.conf.humanmodified"
+		fi
+	fi
+
+	echo -e "${_AXE_BLOCK_MODE} End of setup makepkg"
+
+}
+
+
+function sanity_check()
+{
+#final user check of makepkg before auto
+echo -e "${_AXE_INFO_MODE} this is your final sanity check, please make SURE everything is correct in makepkg.conf"
+echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to continue"
+read -n1 -s
+nano /etc/makepkg.conf
+}
+
+
+# toolchain functions ************************************************************************************************************************************************************************
+
+
+
+function build_gcc()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build gcc$_AXE_MULTILIB_SUFFIX"
+	#build gcc,  will try it from the hdd only since it never builds from ram
+
+	find /var/abs -type d -name "gcc$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "sucsessfully built gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP $(date) suceeded from $_AXE_HDD_BUILD_DIR" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd"
+			rm -rf "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+			echo -e "${_AXE_BLOCK_MODE} End of build gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP"
+			let _AXE_GCC_REP=$_AXE_GCC_REP+1
+			return 0
+		else
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd"
+			echo "!!!!!!!!!!!build fails gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			rm -rf "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+		fi
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi
+
+	#lets try that again with MAKEFLAGS commented out
+	#comment out MAKEFLAGS
+	sed -i 's/MAKEFLAGS/#MAKEFLAGS/' /etc/makepkg.conf
+
+	
+	find /var/abs -type d -name "gcc$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+
+			echo "sucsessfully built gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP $(date) from $_AXE_HDD_BUILD_DIR with MAKEFLAGS commented out" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd/nomakeflags"
+			rm -rf "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			echo -e "${_AXE_BLOCK_MODE} End of build gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP"
+			let _AXE_GCC_REP=$_AXE_GCC_REP+1
+			return 0
+		else
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/gcc$_AXE_MULTILIB_SUFFIX/pass$_AXE_GCC_REP/hd/nomakeflags"
+			echo "!!!!!!!!!!!build fails gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP also failed same build with MAKEFLAGS commented out $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			rm -rf "$_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			reset_toolchain
+			echo -e "${_AXE_BLOCK_MODE} End of build gcc$_AXE_MULTILIB_SUFFIX pass$_AXE_GCC_REP"
+			return 1
+		fi
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi
+	
+}
+
+function build_libtool()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build libtool$_AXE_MULTILIB_SUFFIX pass$_AXE_LIBTOOL_REP "
+	
+	
+	if [[ "$_AXE_MULTILIB_SUFFIX" ]]; then
+		echo -e "${_AXE_BLOCK_MODE} Start of build libltdl pass$_AXE_LIBLTDL_REP alone from libtool package"
+		find /var/abs -type d -name "libtool" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_RAM_BUILD_DIR/libtool" ]]; then
+			cd "$_AXE_RAM_BUILD_DIR/libtool"
+			makepkg --asroot --noconfirm --log -cs
+			if [[ $? -eq 0 ]]; then
+				pacman -U --noconfirm libltdl.*
+				echo "sucsessfully built libltdl pass$_AXE_LIBLTDL_REP and installed it seperate from libtool for the libtool-multilib toolchain $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+				cd /root/
+				mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/libltdl/pass$_AXE_LIBLTDL_REP"
+				cp -p $_AXE_RAM_BUILD_DIR/libtool/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/libltdl/pass$_AXE_LIBLTDL_REP"
+				rm -rf "$_AXE_RAM_BUILD_DIR/libtool"
+				let _AXE_LIBLTDL_REP=$_AXE_LIBLTDL_REP+1
+				echo -e "${_AXE_BLOCK_MODE} End of build libltdl"
+			else
+				echo "!!!!!!!!!!!build fails libltdl pass$_AXE_LIBLTDL_REP $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+				mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/libltdl/pass$_AXE_LIBLTDL_REP"
+				cp -p $_AXE_RAM_BUILD_DIR/libtool/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/libltdl/pass$_AXE_LIBLTDL_REP"
+				reset_toolchain
+				echo -e "${_AXE_BLOCK_MODE} End of build libltdl"
+				return 1
+			fi
+			
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/libltdl directory, check the code!!!"
+			return 50
+		fi
+	fi
+	
+	#build libtool$_AXE_MULTILIB_SUFFIX, from tmp dir never had any problem building  from ram 
+	find /var/abs -type d -name "libtool$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/libtool$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/libtool$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "sucsessfully built libtool$_AXE_MULTILIB_SUFFIX pass$_AXE_LIBTOOL_REP $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/libtool$_AXE_MULTILIB_SUFFIX/pass$_AXE_LIBTOOL_REP"
+			cp -p $_AXE_RAM_BUILD_DIR/libtool$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/libtool$_AXE_MULTILIB_SUFFIX/pass$_AXE_LIBTOOL_REP/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/libtool$_AXE_MULTILIB_SUFFIX"
+			echo -e "${_AXE_BLOCK_MODE} End of build libtool$_AXE_MULTILIB_SUFFIX pass$_AXE_LIBTOOL_REP"
+			let _AXE_LIBTOOL_REP=$_AXE_LIBTOOL_REP+1
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails libtool$_AXE_MULTILIB_SUFFIX pass$_AXE_LIBTOOL_REP $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/libtool$_AXE_MULTILIB_SUFFIX/pass$_AXE_LIBTOOL_REP"
+			cp -p $_AXE_RAM_BUILD_DIR/libtool$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/libtool$_AXE_MULTILIB_SUFFIX/pass$_AXE_LIBTOOL_REP"
+			reset_toolchain
+			return 1
+		fi
+		
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_HDD_BUILD_DIR/gcc$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi
+	
+}
+
+
+function build_binutils()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP "
+	
+	
+	
+	#build binutils$_AXE_MULTILIB_SUFFIX, from tmp dir if fails will try this one from hdd to since i have had issues with it in ram
+	find /var/abs -type d -name "binutils$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/ram"
+			cp -p $_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/ram/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/"
+			echo -e "${_AXE_BLOCK_MODE} End of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_GLIBC_REP "
+			let _AXE_BINUTILS_REP=$_AXE_BINUTILS_REP+1
+			return 0
+		else
+			#logging
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/ram"
+			cp -p $_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/ram/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX"
+		fi			
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi				
+					
+	#ok build failed in ram lets try it on hdd
+	
+	find /var/abs -type d -name "binutils$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP $(date) failed in /tmp/ suceeded from $_AXE_HDD_BUILD_DIR" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/"
+			echo -e "${_AXE_BLOCK_MODE} End of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_GLIBC_REP "
+			let _AXE_BINUTILS_REP=$_AXE_BINUTILS_REP+1
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP $(date) failed from both ram and hdd" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/"
+		fi
+		
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi	
+	
+	
+	#lets try that again with MAKEFLAGS commented out
+	#comment out MAKEFLAGS
+	sed -i 's/MAKEFLAGS/#MAKEFLAGS/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "binutils$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP $(date) from $_AXE_HDD_BUILD_DIR with MAKEFLAGS commented out" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/nomakeflags"
+			rm -rf "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			echo -e "${_AXE_BLOCK_MODE} End of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_GLIBC_REP "
+			let _AXE_BINUTILS_REP=$_AXE_BINUTILS_REP+1
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP $(date) failed from both ram and hdd and with MAKEFLAGS commented out" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/binutils$_AXE_MULTILIB_SUFFIX/pass$_AXE_BINUTILS_REP/hd/nomakeflags"
+			rm -rf "$_AXE_HDD_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX/"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+		fi
+		
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi	
+
+	#try to build it in clean chroot, if fails its arches fault ,no logging from chroot im afraid
+	find /var/abs -type d -name "binutils$_AXE_MULTILIB_SUFFIX" -exec cp -rp {} "$_AXE_CHROOT_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_CHROOT_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX" ]]; then
+		cd "$_AXE_CHROOT_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX"
+		extra-x86_64-build
+		if [[ $? -eq 0 ]]; then 
+			echo "binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP sucessfully built in chroot, looks like its something to do with our compiler flags or build environment in general $(date)" >> "$_AXE_DIR/build-chroot.log"
+			cd /root/
+			reset_toolchain
+			echo -e "${_AXE_BLOCK_MODE} End of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_GLIBC_REP "
+			return 1
+		else
+			echo "binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_BINUTILS_REP failed built in chroot, looks like its arch maintainers issue $(date)" >> "$_AXE_DIR/build-chroot.log"
+			cd /root/
+			reset_toolchain
+			echo -e "${_AXE_BLOCK_MODE} End of build binutils$_AXE_MULTILIB_SUFFIX pass$_AXE_GLIBC_REP "
+			return 1
+		fi
+
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_CHROOT_BUILD_DIR/binutils$_AXE_MULTILIB_SUFFIX directory, check the code!!!"
+		return 50
+	fi
+}
+
+function build_glibc()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build glibc pass$_AXE_GLIBC_REP "
+	
+	
+	#build glibc, from tmp dir if fails will try this one from hdd to since i have had issues with it in ram
+	find /var/abs -type d -name "glibc" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/glibc" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/glibc"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built glibc pass$_AXE_GLIBC_REP $(date)" >> $_AXE_LOGS_DIR/build-toolchain-log
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/ram"
+			cp -p $_AXE_RAM_BUILD_DIR/glibc/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/ram/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/glibc/"
+			echo -e "${_AXE_BLOCK_MODE} End of build glibc pass$_AXE_GLIBC_REP "
+			let _AXE_GLIBC_REP=$_AXE_GLIBC_REP+1
+			return 0
+		else
+			#logging
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/ram"
+			cp -p $_AXE_RAM_BUILD_DIR/glibc/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/ram/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/glibc"
+		fi	
+	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/glibc directory, check the code!!!"
+		return 50
+	fi		
+
+	#ok build failed in ram lets try it on hdd
+	find /var/abs -type d -name "glibc" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/glibc" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/glibc"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built glibc pass$_AXE_GLIBC_REP $(date) failed in /tmp/ suceeded from $_AXE_HDD_BUILD_DIR" >> $_AXE_LOGS_DIR/build-toolchain-log
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/glibc/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/glibc/"
+			echo -e "${_AXE_BLOCK_MODE} End of build glibc pass$_AXE_GLIBC_REP "
+			let _AXE_GLIBC_REP=$_AXE_GLIBC_REP+1
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails glibc pass$_AXE_GLIBC_REP $(date) failed from both ram and hdd" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd"
+			cp -p $_AXE_HDD_BUILD_DIR/glibc/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/glibc/"
+		fi
+	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/glibc directory, check the code!!!"
+		return 50
+	fi
+
+	#ok lets try that again with MAKEOPTS  commented out
+	#comment out MAKEFLAGS
+	sed -i 's/MAKEFLAGS/#MAKEFLAGS/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "glibc" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/glibc" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/glibc"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built glibc pass$_AXE_GLIBC_REP $(date) failed in /tmp/ suceeded from $_AXE_HDD_BUILD_DIR with MAKEFLAGS commented out" >> $_AXE_LOGS_DIR/build-toolchain-log
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/glibc/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/nomakeflags/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/glibc/"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			let _AXE_GLIBC_REP=$_AXE_GLIBC_REP+1
+			echo -e "${_AXE_BLOCK_MODE} End of build glibc pass$_AXE_GLIBC_REP "
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails glibc pass$_AXE_GLIBC_REP $(date) failed from both ram and hdd and with MAKEFLAGS commented out" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/nomakeflags"
+			cp -p $_AXE_HDD_BUILD_DIR/glibc/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/glibc/pass$_AXE_GLIBC_REP/hd/nomakeflags/"
+			rm -rf "$_AXE_HDD_BUILD_DIR/glibc/"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			echo -e "${_AXE_BLOCK_MODE} End of build glibc pass$_AXE_GLIBC_REP "
+			return 1
+		fi
+	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/glibc directory, check the code!!!"
+		return 50
+	fi
+
+}
+
+function build_linux_api_headers()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build linux api headers"
+	#build 	linux-api-headers, from tmp dir
+	find /var/abs -type d -name "linux-api-headers" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/linux-api-headers" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/linux-api-headers"
+		makepkg --asroot --noconfirm --log -cs
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz
+			echo "sucsessfully built linux-api-headers $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			cd /root/
+			mkdir -pv "$_AXE_GOOD_BUILD_LOGS_DIR/linux-api-headers"
+			cp -p $_AXE_RAM_BUILD_DIR/linux-api-headers/*.log "$_AXE_GOOD_BUILD_LOGS_DIR/linux-api-headers/"
+			rm -rf "$_AXE_RAM_BUILD_DIR/linux-api-headers"
+			echo -e "${_AXE_BLOCK_MODE} End of build linux api headers"
+			return 0
+		else
+			echo "!!!!!!!!!!!build fails linux-api-headers pass1 $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			mkdir -pv "$_AXE_FAIL_BUILD_LOGS_DIR/linux-api-headers"
+			cp -p $_AXE_RAM_BUILD_DIR/linux-api-headers/*.log "$_AXE_FAIL_BUILD_LOGS_DIR/linux-api-headers/"
+			reset_toolchain
+			echo -e "${_AXE_BLOCK_MODE} End of build linux api headers"
+			return 1
+		fi
+		
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $_AXE_RAM_BUILD_DIR/linux-api-headers directory, check the code!!!"
+		return 50
+	fi
+
+}
+
+
+function build_sucsess()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} sucessful toolchain build backing up and preventing further upgrades "
+	
+	echo "multilib toolchain built sucessfully $(date)" >> $_AXE_LOGS_DIR/build-toolchain-log
+	echo "# this list of packages did not fail build, they all passed and details are in $_AXE_LOGS_DIR/build-toolchain-log, they are here to prevent rebuilding on the final rebuild $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "glibc $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "libtool$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "libltdl $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "lib32-libltdl $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc-ada$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc-fortran$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc-go$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc-libs$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "gcc-obj$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "binutils$_AXE_MULTILIB_SUFFIX $(date)" >> $_AXE_DIR/build-exclude.list
+	echo "#end of toolchain list $(date)" >> $_AXE_DIR/build-exclude.list
+	
+	# now prevent further upgrades by writing a block to /etc/pacman.conf
+	
+	if [[ $_AXE_MULTILIB_PRESENT -eq 1 ]]; then
+		sed -i '/options]/a# axe is controlling toolchain upgrades now with your approval obviously,these lines prevent your toolchain from being updated, \nIgnorePkg=glibc\nIgnorePkg=lib32-glibc\nIgnorePkg=libtool-multilib\nIgnorePkg=libltdl\nIgnorePkg=lib32-libltdl\nIgnorePkg=gcc-ada-multilib\nIgnorePkg=gcc-fortran-multilib\nIgnorePkg=gcc-go-multilib\nIgnorePkg=gcc-obj-multilib\nIgnorePkg=gcc-multilib\nIgnorePkg=gcc-libs-multilib\nIgnorePkg=lib32-gcc-libs\nIgnorePkg=binutils-multilib\n' /etc/pacman.conf
+	else
+		sed -i '/options]/a# axe is controlling toolchain upgrades now with your approval obviously,these lines prevent your toolchain from being updated, \nIgnorePkg=glibc\nIgnorePkg=libtool\nIgnorePkg=libltdl\nIgnorePkg=gcc-ada\nIgnorePkg=gcc-fortran\nIgnorePkg=gcc-go\nIgnorePkg=gcc-obj\nIgnorePkg=gcc\nIgnorePkg=gcc-libs\nIgnorePkg=binutils\n' /etc/pacman.conf
+	fi
+	
+	#now lets backup this sucsesfull toolchain build
+	mkdir -pv $_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX
+	cp -p /var/cache/pacman/pkg/gcc*.pkg.tar.xz "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+	cp -p /var/cache/pacman/pkg/glibc*.pkg.tar.xz "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+	cp -p /var/cache/pacman/pkg/libltdl*.pkg.tar.xz "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+	cp -p /var/cache/pacman/pkg/libtool*.pkg.tar.xz "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+	cp -p /var/cache/pacman/pkg/binutils*.pkg.tar.xz "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/"
+	echo "date stamp for this toolchain build is $(date)" > "$_AXE_DIR/toolchainbackup/toolchain$_AXE_MULTILIB_SUFFIX/datestamp.txt"
+	
+	echo -e "${_AXE_BLOCK_MODE} end of sucessful toolchain build backing up and preventing further upgrades "
+
+}
+
+
+
+
+#end of toolchain functions***************************************************************************************************************************************
+
+#start of build functions ****************************************************************************************************************************************
+
+function build_pkg()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of build package specified package"
+	
+	#first argument is pkg name 
+		#xxxx package name
+	#second argument is which run
+		#1 run1
+		#2 run2
+		#3 install function
+	#third argument weather user intervention is needed
+		#user user needs to press buttons
+
+
+	local VAR="_AXE_LOCAL_RUN_GOOD"
+	local VAR="_AXE_LOCAL_RUN_BAD"
+	local VAR="_AXE_LOCAL_NOCONFIRM"
+	local VAR="_AXE_LOCAL_ABS_YES"
+	_AXE_LOCAL_ABS_YES=1
+	
+	if [[ $2 -eq 1 ]]; then
+		_AXE_LOCAL_RUN_GOOD=$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR
+		_AXE_LOCAL_RUN_BAD=$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR
+	fi
+	
+	if [[ $2 -eq 2 ]]; then
+		_AXE_LOCAL_RUN_GOOD=$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR
+		_AXE_LOCAL_RUN_BAD=$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR
+	fi
+	
+	if [[ $2 -eq 3 ]]; then
+		_AXE_LOCAL_RUN_GOOD=$_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR
+		_AXE_LOCAL_RUN_BAD=$_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR
+	fi
+	
+	
+	if [[ "$3" = "user" ]]; then
+		_AXE_LOCAL_NOCONFIRM=""
+	else
+		_AXE_LOCAL_NOCONFIRM="--noconfirm"
+	fi
+	
+	
+	#is package in the abs
+	
+	find /var/abs -type d -name "$1"
+	if [[ $? -eq 0 ]]; then
+		echo -e "${_AXE_INFO_MODE} $1 is in the ABS tree, will fetch the PKGBUILD etc from there"
+		_AXE_LOCAL_ABS_YES=1
+	else
+		echo -e "${_AXE_INFO_MODE} $1 is NOT in the ABS tree, am assuming its an aur package so will use yaourt to build it"
+		_AXE_LOCAL_ABS_YES=0
+	fi
+	
+	# its an abs package *****************************************************************************************************
+	
+	
+	if [[ "$_AXE_LOCAL_ABS_YES" -eq 1 ]]; then
+	
+		# ram with -O3*********************************************************************************************************
+		
+		# switch to -O3
+		sed -i 's/-O2/-O3/' /etc/makepkg.conf
+		
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_RAM_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_RAM_BUILD_DIR/$1"
+			makepkg --asroot "$_AXE_LOCAL_NOCONFIRM" --log --pkg "$1" -cs 
+			if [[ $? -eq 0 ]]; then
+				if [[ $2 -gt 1 ]]; then
+					cp -fp  $_AXE_RAM_BUILD_DIR/$1/*.pkg.tar.xz "$_AXE_REPO_DIR"
+				fi
+				pacman -U "$_AXE_LOCAL_NOCONFIRM" *.pkg.tar.xz 
+				echo "$1 built and installed with -O3 from $_AXE_RAM_BUILD_DIR $(date)" >> "$_AXE_DIR/build-complete.list"
+				echo -e "${_AXE_INFO_MODE} $1 built and installed with -O3 from $_AXE_RAM_BUILD_DIR $(date)"
+				cd /root/
+				check_pkg_tag "$1"
+				cp -pf $_AXE_RAM_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_GOOD"
+				rm -fr "$_AXE_RAM_BUILD_DIR/$1"
+				return 0
+			else
+				cd /root/
+				echo -e "${_AXE_FUCKUP_MODE} $1 FAILED to build with -O3 from $_AXE_RAM_BUILD_DIR $(date)"
+				#lets log this build fail
+				mkdir -pv "$_AXE_LOCAL_RUN_BAD/$1/ram-O3"
+				cp -p $_AXE_RAM_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_BAD/$1/ram-O3"
+				rm -fr "$_AXE_RAM_BUILD_DIR/$1"
+			fi
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi	
+	
+	
+	
+		# ram with -O2*********************************************************************************************************			
+	
+		# switch to -O2
+		sed -i 's/-O3/-O2/' /etc/makepkg.conf
+		
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_RAM_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_RAM_BUILD_DIR/$1"
+			makepkg --asroot "$_AXE_LOCAL_NOCONFIRM" --log --pkg "$1" -cs 
+			if [[ $? -eq 0 ]]; then
+				if [[ $2 -gt 1 ]]; then
+					cp -fp  $_AXE_RAM_BUILD_DIR/$1/*.pkg.tar.xz "$_AXE_REPO_DIR"
+				fi
+				pacman -U "$_AXE_LOCAL_NOCONFIRM" *.pkg.tar.xz 
+				echo "$1 built and installed with -O2 from $_AXE_RAM_BUILD_DIR $(date)" >> "$_AXE_DIR/build-complete.list"
+				echo -e "${_AXE_INFO_MODE} $1 built and installed with -O2 from $_AXE_RAM_BUILD_DIR $(date)"
+				cd /root/
+				check_pkg_tag "$1"
+				cp -pf $_AXE_RAM_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_GOOD"
+				rm -fr "$_AXE_RAM_BUILD_DIR/$1"
+				return 0
+			else
+				cd /root/
+				echo -e "${_AXE_FUCKUP_MODE} $1 FAILED to build with -O2 from $_AXE_RAM_BUILD_DIR $(date)"
+				#lets log this build fail
+				mkdir -pv "$_AXE_LOCAL_RUN_BAD/$1/ram-O2"
+				cp -p $_AXE_RAM_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_BAD/$1/ram-O2"
+				rm -fr "$_AXE_RAM_BUILD_DIR/$1"
+			fi
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi	
+	
+	
+		# hdd with -O3********************************************************************************************************
+		
+		# switch to -O3
+		sed -i 's/-O2/-O3/' /etc/makepkg.conf
+		
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_HDD_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_HDD_BUILD_DIR/$1"
+			makepkg --asroot "$_AXE_LOCAL_NOCONFIRM" --log --pkg "$1" -cs 
+			if [[ $? -eq 0 ]]; then
+				if [[ $2 -gt 1 ]]; then
+					cp -fp  $_AXE_HDD_BUILD_DIR/$1/*.pkg.tar.xz "$_AXE_REPO_DIR"
+				fi
+				pacman -U "$_AXE_LOCAL_NOCONFIRM" *.pkg.tar.xz 
+				echo "$1 built and installed with -O3 from $_AXE_HDD_BUILD_DIR $(date)" >> "$_AXE_DIR/build-complete.list"
+				echo -e "${_AXE_INFO_MODE} $1 built and installed with -O3 from $_AXE_HDD_BUILD_DIR $(date)"
+				cd /root/
+				check_pkg_tag "$1"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_GOOD"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				return 0
+			else
+				echo -e "${_AXE_FUCKUP_MODE} $1 FAILED to build with -O3 from $_AXE_HDD_BUILD_DIR $(date)"
+				cd /root/
+				#lets log this build fail
+				mkdir -pv "$_AXE_LOCAL_RUN_BAD/$1/hdd-O3"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_BAD/$1/hdd-O3"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				
+			fi
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi						
+	
+	
+		# hdd with -O2********************************************************************************************************
+		
+		# switch to -O2
+		sed -i 's/-O3/-O2/' /etc/makepkg.conf
+		
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_HDD_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_HDD_BUILD_DIR/$1"
+			makepkg --asroot "$_AXE_LOCAL_NOCONFIRM" --log --pkg "$1" -cs 
+			if [[ $? -eq 0 ]]; then
+				dev_debug "wait here check stuff"
+				if [[ $2 -gt 1 ]]; then
+					cp -fp  $_AXE_HDD_BUILD_DIR/$1/*.pkg.tar.xz "$_AXE_REPO_DIR"
+				fi
+				pacman -U "$_AXE_LOCAL_NOCONFIRM" *.pkg.tar.xz 
+				echo "$1 built and installed with -O2 from $_AXE_HDD_BUILD_DIR $(date)" >> "$_AXE_DIR/build-complete.list"
+				echo -e "${_AXE_INFO_MODE} $1 built and installed with -O2 from $_AXE_HDD_BUILD_DIR $(date)"
+				cd /root/
+				check_pkg_tag "$1"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_GOOD"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				return 0
+			else
+				dev_debug "wait here check stuff"
+				echo -e "${_AXE_FUCKUP_MODE} $1 FAILED to build with -O2 from $_AXE_HDD_BUILD_DIR $(date)"
+				cd /root/
+				#lets log this build fail
+				mkdir -pv "$_AXE_LOCAL_RUN_BAD/$1/hdd-O2"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_BAD/$1/hdd-O2"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				
+			fi
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi				
+	
+		
+		# chroot **************************************************************************************************************		
+	
+	
+	
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_CHROOT_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_CHROOT_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_CHROOT_BUILD_DIR/$1"
+			extra-x86_64-build -c
+			if [[ $? -eq 0 ]]; then 
+				dev_debug "wait here check stuff"
+				echo "$1 sucessfully built in chroot, looks like its something to do with our compiler flags or build environment in general $(date)" >> $_AXE_DIR/build-chroot.log
+				echo -e "${_AXE_FUCKUP_MODE} $1 sucessfully built in chroot, looks like its something to do with our compiler flags or build environment in general $(date)"
+				cd /root/
+			else
+				dev_debug "wait here check stuff"
+				echo "$1 failed built in chroot, looks like its arch maintainers issue $(date)" >> "$_AXE_DIR/build-chroot.log"
+				echo "$1 failed built in chroot, looks like its arch maintainers issue $(date)" >> "$_AXE_DIR/build-exclude.list"
+				echo -e "${_AXE_FUCKUP_MODE} $1 failed built in chroot, looks like its arch maintainers issue $(date)"
+				echo "$1" >> "$_AXE_DIR/build-fail.list"
+				cd /root/
+				return 1
+			fi
+	
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi													
+	
+	
+		# hdd -02 with jopts off ***********************************************************************************************			
+		dev_debug "wait here check stuff"
+		
+		#comment out makeopts
+		sed -i 's/MAKEFLAGS/#MAKEFLAGS/' /etc/makepkg.conf
+	
+		# switch to -O2
+		sed -i 's/-O3/-O2/' /etc/makepkg.conf
+		
+		find /var/abs -type d -name "$1" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+		if [[ -d "$_AXE_HDD_BUILD_DIR/$1" ]]; then
+			cd "$_AXE_HDD_BUILD_DIR/$1"
+			makepkg --asroot "$_AXE_LOCAL_NOCONFIRM" --log --pkg "$1" -cs 
+			if [[ $? -eq 0 ]]; then
+				if [[ $2 -gt 1 ]]; then
+					cp -fp  $_AXE_HDD_BUILD_DIR/$1/*.pkg.tar.xz "$_AXE_REPO_DIR"
+				fi
+				pacman -U "$_AXE_LOCAL_NOCONFIRM" *.pkg.tar.xz 
+				echo "$1 built and installed with -O2 from hdd with MAKEOPTS commented out $(date)" >> $_AXE_DIR/build-complete.list
+				echo -e "${_AXE_INFO_MODE} $1 built and installed with -O2 from hdd with MAKEOPTS commented out $(date)"
+				cd /root/
+				check_pkg_tag "$1"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_GOOD"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				#uncomment MAKEFLAGS
+				sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+				return 0
+			else
+				cd /root/
+				#lets log this build fail
+				mkdir -pv "$_AXE_LOCAL_RUN_BAD/$1/hdd-O2/nomakeopts"
+				cp -p $_AXE_HDD_BUILD_DIR/$1/*.log "$_AXE_LOCAL_RUN_BAD/$1/hdd-O2/nomakeopts"
+				rm -fr "$_AXE_HDD_BUILD_DIR/$1"
+				echo "$1 failed to build with -O2 -O3 from both ram and $_AXE_HDD_BUILD_DIR AND even failed the hdd,-O2,no MAKEFLAGS build $(date)" >> "$_AXE_DIR/build-exclude.list"
+				echo -e "${_AXE_FUCKUP_MODE} $1 failed to build with -O2 -O3 from both ram and $_AXE_HDD_BUILD_DIR AND even failed the hdd,-O2,no MAKEFLAGS build $(date)"
+				echo "$1" >> "$_AXE_DIR/build-fail.list"
+				#uncomment MAKEFLAGS
+				sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+				return 1
+				
+			fi
+	
+		else
+			echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the $1 directory, check the code!!!"
+			return 50		
+		fi				
+	fi
+	
+	
+	
+	# its an aur package *******************************************************************************************************
+	
+	
+
+	if [[ "$_AXE_LOCAL_ABS_YES" -eq 1 ]]; then
+
+
+		# aur from ram -03 ****************************************************************************************************
+		
+		# switch to -O3
+		sed -i 's/-O2/-O3/' /etc/makepkg.conf
+	
+		yaourt -Sb "$_AXE_LOCAL_NOCONFIRM" "$1"
+		if [[ $? -eq 0 ]]; then 
+			echo "$1 aur package built with -O3 from ram $(date)" >> "$_AXE_DIR/build-complete.list"
+			check_pkg_tag "$1"
+			return 0
+		else
+			rm -fr /tmp/*.yaourt.*
+		fi
+		
+		
+		# aur from ram -02 ****************************************************************************************************
+		
+		# switch to -O2
+		sed -i 's/-O3/-O2/' /etc/makepkg.conf
+	
+		yaourt -Sb "$_AXE_LOCAL_NOCONFIRM" "$1"
+		if [[ $? -eq 0 ]]; then 
+			echo "$1 aur package built with -O2 from ram $(date)" >> "$_AXE_DIR/build-complete.list"
+			check_pkg_tag "$1"
+			return 0
+		else
+			rm -fr /tmp/*.yaourt.*
+		fi
+		
+		
+		# aur from hdd -03 *****************************************************************************************************
+		
+		# switch to -O3
+		sed -i 's/-O2/-O3/' /etc/makepkg.conf
+	
+		yaourt -Sb "$_AXE_LOCAL_NOCONFIRM" --tmp "$_AXE_HDD_BUILD_DIR" "$1"
+		if [[ $? -eq 0 ]]; then 
+			echo "$1 aur package built with -O3 from hdd $(date)" >> "$_AXE_DIR/build-complete.list"
+			check_pkg_tag "$1"
+			return 0
+		else
+			rm -fr /$_AXE_HDD_BUILD_DIR/*.yaourt.*
+		fi
+		
+		
+		# aur from hdd -02 *****************************************************************************************************
+		
+		# switch to -O2
+		sed -i 's/-O2/-O2/' /etc/makepkg.conf
+	
+		yaourt -Sb "$_AXE_LOCAL_NOCONFIRM" --tmp "$_AXE_HDD_BUILD_DIR" "$1"
+		if [[ $? -eq 0 ]]; then 
+			echo "$1 aur package built with -O2 from hdd $(date)" >> "$_AXE_DIR/build-complete.list"
+			check_pkg_tag "$1"
+			return 0
+		else
+			rm -fr /$_AXE_HDD_BUILD_DIR/*.yaourt.*
+		fi	
+	
+	
+		# aur from hdd -02 make opts commented out******************************************************************************
+		
+		# switch to -O2
+		sed -i 's/-O2/-O2/' /etc/makepkg.conf
+		
+		#comment out MAKEFLAGS
+		sed -i 's/MAKEFLAGS/#MAKEFLAGS/' /etc/makepkg.conf
+	
+		yaourt -Sb "$_AXE_LOCAL_NOCONFIRM" --tmp "$_AXE_HDD_BUILD_DIR" "$1"
+		if [[ $? -eq 0 ]]; then 
+			echo "$1 aur package built with -O2 from hdd $(date)" >> "$_AXE_DIR/build-complete.list"
+			check_pkg_tag "$1"
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			return 0
+		else
+			echo "$1 aur package failed to build with -O2 -O3 from both ram and hdd and with makeopts commented at -O2 from hdd $(date)" >> "$_AXE_DIR/build-exclude.list"
+			echo "$1" >> $_AXE_DIR/build-fail.list
+			rm -fr /$_AXE_HDD_BUILD_DIR/*.yaourt.*
+			#uncomment MAKEFLAGS
+			sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+			return 1
+		fi	
+
+	fi
+	
+
+	echo -e "${_AXE_BLOCK_MODE} End of build package "
+}
+
+
+
+
+#************************************************************************
+#************************************************************************
+#************************************************************************
+
+
+function build_linux()
+{
+	echo -e "\n"
+	echo -e "${_AXE_BLOCK_MODE} Start of kernal build"
+	
+	#first argument is type of build
+		#0 first build with menu
+		#1 first build no menu
+		#2 second build
+		#3 local menu install,reconfigure and rebuild kernal
+		
+	local VAR="_AXE_LOCAL_RUN_GOOD_LINUX"
+	local VAR="_AXE_LOCAL_RUN_BAD_LINUX"
+	local VAR="_AXE_LOCAL_LOG"
+	_AXE_LOCAL_LOG="--log"
+	
+	if [[ $1 -lt 2 ]]; then
+		_AXE_LOCAL_RUN_GOOD_LINUX=$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_1_DIR
+		_AXE_LOCAL_RUN_BAD_LINUX=$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_1_DIR
+	fi
+	
+	if [[ $1 -eq 2 ]]; then
+		_AXE_LOCAL_RUN_GOOD_LINUX=$_AXE_GOOD_BUILD_LOGS_PACKAGES_RUN_2_DIR
+		_AXE_LOCAL_RUN_BAD_LINUX=$_AXE_FAIL_BUILD_LOGS_PACKAGES_RUN_2_DIR
+	fi
+	
+	if [[ $1 -eq 3 ]]; then
+		_AXE_LOCAL_RUN_GOOD_LINUX=$_AXE_GOOD_BUILD_LOGS_INSTALL_FUNCTION_DIR
+		_AXE_LOCAL_RUN_BAD_LINUX=$_AXE_FAIL_BUILD_LOGS_INSTALL_FUNCTION_DIR
+	fi
+
+		
+	abs
+	abs
+
+	# linux from ram -03 ************************************************************************************
+
+	# to -O3 
+	sed -i 's/-O2/-O3/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "linux" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/linux" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/linux"
+		
+		if [[ $1 -eq 0 || $1 -eq 3 ]]; then
+			_AXE_LOCAL_LOG=""
+			linux_nconfig
+		fi
+		
+		if [[ $1 -eq 2 ]]; then
+			linux_config_restore_ram
+		fi
+
+		
+		makepkg --asroot --noconfirm $_AXE_LOCAL_LOG -cs 
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "linux built and installed with -O3 from ram $(date)" >> "$_AXE_DIR/build-complete.list"
+			
+			linux_config_backup
+			
+			cp -pf $_AXE_RAM_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_GOOD_LINUX"
+			cd /root/
+			rm -fr "$_AXE_RAM_BUILD_DIR/linux"
+			check_pkg_tag linux
+			return 0
+		else
+		
+			linux_config_backup
+			
+			mkdir -pv "$_AXE_LOCAL_RUN_BAD_LINUX/linux/ram-O3"
+			cp -p $_AXE_RAM_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_BAD_LINUX/linux/ram-O3"
+			cd /root/
+			rm -fr "$_AXE_RAM_BUILD_DIR/linux"
+		fi	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the linux directory, check the code!!!"
+		return 50
+	fi			
+	
+	
+	# linux from ram -02 ***********************************************************************************
+
+	# to -O2 
+	sed -i 's/-O3/-O2/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "linux" -exec cp -rp {} "$_AXE_RAM_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_RAM_BUILD_DIR/linux" ]]; then
+		cd "$_AXE_RAM_BUILD_DIR/linux"
+		
+		linux_config_restore_ram
+		
+		makepkg --asroot --noconfirm --log -cs 
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "linux built and installed with -O2 from ram $(date)" >> "$_AXE_DIR/build-complete.list"
+			cp -pf $_AXE_RAM_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_GOOD_LINUX"
+			cd /root/
+			rm -fr "$_AXE_RAM_BUILD_DIR/linux"
+			check_pkg_tag linux
+			return 0
+		else
+			mkdir -pv "$_AXE_LOCAL_RUN_BAD_LINUX/linux/ram-O2"
+			cp -p $_AXE_RAM_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_BAD_LINUX/linux/ram-O2"
+			cd /root/
+			rm -fr "$_AXE_RAM_BUILD_DIR/linux"
+		fi	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the linux directory, check the code!!!"
+		return 50
+	fi						
+	
+	
+	# linux from hdd -03 **************************************************************************************
+
+	# to -O3
+	sed -i 's/-O2/-O3/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "linux" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/linux" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/linux"
+		
+		linux_config_restore_hdd
+		
+		makepkg --asroot --noconfirm --log -cs 
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "linux built and installed with -O3 from hdd $(date)" >> "$_AXE_DIR/build-complete.list"
+			cp -pf $_AXE_HDD_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_GOOD_LINUX"
+			cd /root/
+			rm -fr "$_AXE_HDD_BUILD_DIR/linux"
+			check_pkg_tag linux
+			return 0
+		else
+			mkdir -pv "$_AXE_LOCAL_RUN_BAD_LINUX/linux/hdd-O3"
+			cp -p $_AXE_HDD_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_BAD_LINUX/linux/hdd-O3"
+			cd /root/
+			rm -fr "$_AXE_HDD_BUILD_DIR/linux"
+		fi	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the linux directory, check the code!!!"
+		return 50
+	fi							
+
+
+	# linux from hdd -02 ***************************************************************************************
+
+	# to -O2
+	sed -i 's/-O3/-O2/' /etc/makepkg.conf
+	
+	find /var/abs -type d -name "linux" -exec cp -rp {} "$_AXE_HDD_BUILD_DIR" \; 2> /dev/null
+	if [[ -d "$_AXE_HDD_BUILD_DIR/linux" ]]; then
+		cd "$_AXE_HDD_BUILD_DIR/linux"
+		
+		linux_config_restore_hdd
+		
+		makepkg --asroot --noconfirm --log -cs 
+		if [[ $? -eq 0 ]]; then
+			pacman -U --noconfirm *.pkg.tar.xz 
+			echo "linux built and installed with -O2 from hdd $(date)" >> "$_AXE_DIR/build-complete.list"
+			cp -pf $_AXE_HDD_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_GOOD_LINUX"
+			cd /root/
+			rm -fr "$_AXE_HDD_BUILD_DIR/linux"
+			check_pkg_tag linux
+			return 0
+		else
+			if [[ $1 -lt 2 ]]; then
+				echo "linux failed to build with -O2 -O3 from both ram and hdd $(date)" >> "$_AXE_DIR/build-exclude.list"
+				echo "linux" >> "$_AXE_DIR/build-fail.list"
+			fi
+			
+			mkdir -pv "$_AXE_LOCAL_RUN_BAD_LINUX/linux/hdd-O2"
+			cp -p $_AXE_HDD_BUILD_DIR/linux/*.log "$_AXE_LOCAL_RUN_BAD_LINUX/linux/hdd-O2"
+			cd /root/
+			rm -fr "$_AXE_HDD_BUILD_DIR/linux"
+			return 1
+		fi	
+	else
+		echo -e "${_AXE_FUCKUP_MODE}ok something is seariously wrong cannot locate the linux directory, check the code!!!"
+		return 50
+	fi
+
+
+	echo -e "${_AXE_BLOCK_MODE} End of kernal build"
+}
+
+#end of build functions ***********************************************************************************************************************
+
+#start of paramiter mode functions **************************************************************************************************************
+
+
+function install_mode_intro()
+{		
+	echo -e "${_AXE_INFO_MODE} Ok you have started me up in install mode, obviously you know all about me, since you are now using my install facility"
+	echo -e "${_AXE_INFO_MODE} this facility is still in writing by my creator so there is no check that the peramiter you supplied is correct, hence make sure the pakage name you supply me is CORRECT"
+	echo -e "${_AXE_INFO_MODE} pkg name you have supplied is $_AXE_INSTALL_MODE_PARAM"
+	echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst} to start the update environment check section and then try to build $_AXE_INSTALL_MODE_PARAM"
+	read -n1 -s
+}	
+
+
+function help()
+{	
+	echo -e "${_AXE_INFO_MODE} "
+	echo -e "${_AXE_PKG_UPDATE_MODE} "
+	echo -e "${_AXE_FUCKUP_MODE} "
+	echo -e "${_AXE_DEBUG_MODE} "
+	echo -e "${_AXE_INSTALL_MODE} "
+	echo -e "${_AXE_BLOCK_MODE} "
+	echo -e "${_AXE_FINALISE_MODE} "
+
+
+}
+
+
+#end of paramiter mode functions *****************************************************************************************************************
+#end of functions section**************************************************************************************************************************************
+
+#start of paramiter mode section*******************************************************************************************************************************
+
+
+	#check passed args and install that package if exists
+	if [[ "$1" ]]; then
+		if [[ "$1" = "--help" ]]; then
+			#FUNCTION show help
+			help
+		else
+			#check for multilib system
+			multilib_check
+			
+			#read default settings file if exist
+			load_settings_startup
+			
+			#FUNCTION show intro blurb for update mode
+			install_mode_intro
+		
+			#FUNCTION make sure multilib repo is enabled
+			check_multilib_repo_enabled
+		
+			#FUNCTION check for archlinux.fr and write to pacman.conf if not there
+			archlinuxfr_check
+			
+			#check dependant progs and fetch if necessary
+			
+			#FUNCTION check if any toolchain component lacks the i7 packager variable
+			toolchain_check
+			
+			#FUNCTION setup makepkg.conf
+			setup_makepkg
+			
+			_AXE_INSTALL_MODE_PARAM="$1"
+			
+			if [[ "$1" = "linux" || "$1" = "linux-headers" ]]; then
+				build_linux 3
+			else
+				#FUNCTION build the package
+				build_pkg $1 3 user
+			fi
+		fi
+		
+	exit
+	fi
+
+
+#end of paramiter mode section*********************************************************************************************************************************
+
+#start of setup section****************************************************************************************************************************************
+	
+	#check for multilib system
+	multilib_check
+	
+	
+	# reset prom possible ctrlc during execution
+	#uncomment MAKEFLAGS
+	sed -i 's/#MAKEFLAGS/MAKEFLAGS/' /etc/makepkg.conf
+	# switch to -O2
+	sed -i 's/-O3/-O2/' /etc/makepkg.conf
+	
+	#read default settings file if exist
+	load_settings_startup
+
+	#FUNCTION check for working directories and create them if not there
+	_AXE_DIR_check
+	
+	
+	#FUNCTION check if resuming from linux build reboot
+	resume_check
+	
+	
+
+	if [[ $_AXE_LINUX_RESUME_YES -eq 0 ]]; then
+		
+		#FUNCTION show intro blurb
+		intro
+		
+		#FUNCTION check for archlinux.fr and write to pacman.conf if not there
+		archlinuxfr_check
+		
+		#refresh and fetch dependencies
+		fetch_deps
+		
+		#FUNCTION make backup of originally installed packages, if not already there, we will use this later
+		packages_backup
+		
+		#FUNCTION make sure multilib repo is enabled
+		check_multilib_repo_enabled
+		
+		#FUNCTION make backup of mkpkg.conf if not already backed up
+		makepkg_backup
+		
+		#FUNCTION make backup of pacman.conf.conf if not already backed up
+		pacman_backup
+		
+		#FUNCTION check for build-exclude.list and build-manual.list in /root/ if not there make one to start off
+		build_mod_lists_check
+		
+		#FUNCTION check if any toolchain component lacks the i7 packager variable
+		toolchain_check
+		
+		#FUNCTION user select debug and build sequence
+		mode_select
+		
+		#FUNCTION setup makepkg.conf
+		setup_makepkg
+		
+		#FUNCTION final user check of makepkg before auto
+		sanity_check
+		
+		#end of setup section**************************************************************************************************************************************
+		
+		#start of build section**************************************************************************************************************************************
+		
+		echo -e "\n"
+		echo -e "${_AXE_BLOCK_MODE} Start of toolchain build"
+		
+		#toolchain build sequence 0 ************************************************************************************************************************************************************************
+		
+		
+		
+		if [[ $_AXE_TOOLCHAIN_COMP_NEW_YES -eq 1 && $_AXE_TOOLCHAIN_BUILD_SEQUENCE -eq 0 ]]; then
+		
+			echo -e "\n"
+			echo -e "${_AXE_INFO_MODE} earlier you chose${bldwht} build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT ${txtrst}"
+			echo -e "${_AXE_INFO_MODE} ok about to build the toolchain, this is a fucking long build so piss off, get a coffe, roll a spliff and check on me in a couple of hours"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst}to continue"
+			read  -n1 -s
+			abs
+			abs
+			echo "starting toolchain build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			
+			build_linux_api_headers
+			
+			build_gcc
+	
+			build_libtool
+	
+			build_glibc
+	
+			build_binutils
+	
+			build_gcc
+	
+			build_libtool
+			
+			#rebuild entire chain again
+			build_glibc
+	
+			build_binutils
+	
+			build_gcc
+	
+			build_libtool
+			
+			build_sucsess
+	
+		fi
+		
+		#toolchain build sequence 1 ************************************************************************************************************************************************************************
+		
+		if [[ $_AXE_TOOLCHAIN_COMP_NEW_YES -eq 1 && $_AXE_TOOLCHAIN_BUILD_SEQUENCE -eq 1 ]]; then
+		
+			echo -e "\n"
+			echo -e "${_AXE_INFO_MODE} earlier you chose${bldwht} build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT ${txtrst}"
+			echo -e "${_AXE_INFO_MODE} ok about to build the toolchain, this is a fucking long build so piss off, get a coffe, roll a spliff and check on me in a couple of hours"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst}to continue"
+			read  -n1 -s
+			abs
+			abs
+			echo "starting toolchain build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			
+			build_linux_api_headers
+		
+			build_glibc
+			
+			build_libtool
+		
+			build_binutils
+			
+			build_gcc
+	
+			build_libtool
+			
+			build_binutils
+	
+			build_glibc
+	
+			build_libtool
+	
+			build_gcc
+	
+			build_libtool
+			
+			build_sucsess
+	
+		fi
+		
+		#toolchain build sequence 2 ************************************************************************************************************************************************************************
+		
+		if [[ $_AXE_TOOLCHAIN_COMP_NEW_YES -eq 1 && $_AXE_TOOLCHAIN_BUILD_SEQUENCE -eq 2 ]]; then
+		
+			echo -e "\n"
+			echo -e "${_AXE_INFO_MODE} earlier you chose${bldwht} build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT ${txtrst}"
+			echo -e "${_AXE_INFO_MODE} ok about to build the toolchain, this is a fucking long build so piss off, get a coffe, roll a spliff and check on me in a couple of hours"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} any key ${txtrst}to continue"
+			read  -n1 -s
+			abs
+			abs
+			echo "starting toolchain build sequence $_AXE_TOOLCHAIN_BUILD_SEQUENCE which is $_AXE_TOOLCHAIN_BUILD_SEQUENCE_TEXT $(date)" >> "$_AXE_LOGS_DIR/build-toolchain-log"
+			
+			build_linux_api_headers
+			
+			build_gcc
+	
+			build_libtool
+	
+			build_glibc
+	
+			build_binutils
+	
+			build_gcc
+	
+			build_libtool
+			
+			build_sucsess
+	
+		fi
+		
+		# build kernal then reboot if not already tagged with i7
+		expac "%n %p" | grep "$_AXE_PACKAGER_NAME" | sed 's/ .*//' | grep -Fx "linux" > $_AXE_DIR/scratch
+		
+		if [[ -s "$_AXE_DIR/scratch" ]]; then
+			echo -e "${_AXE_INFO_MODE}your kernal already has $_AXE_PACKAGER_NAME as the packager variable set assuming build linux rep 1 already complete"
+		else
+			echo -e "\n"
+			echo -e "${_AXE_INFO_MODE} right ! time to rebuild your kernel i will build it with full CFLAGS optimisation which should give you a bit of a performance boost"
+			echo -e "${_AXE_INFO_MODE} do you want to configure the kernel for yourself ? if you say yes i will bring up a standard kernal config menu"
+			echo -e "${_AXE_INFO_MODE} which SHOULD show your standard arch config,if unsure use the menue to load the standard arch config in  $_AXE_RAM_BUILD_DIR/linux"
+			echo -e "${_AXE_INFO_MODE} then you can make any alterations you need , save and quit, then i will finish the build"
+			echo -e "${_AXE_INFO_MODE} it is quite usefull to change processor type from generic to core2, this will gain you another 5pc boost ontop of the gains from optimisation"
+			echo -e "${_AXE_INFO_MODE} but i would not bother with much else, arch kernal configs are very good in my opinion"
+			echo -e "${_AXE_INFO_MODE} i will save your kernal config ,if you chose the menu option, and you saved your config to $_AXE_RAM_BUILD_DIR and will apply it on the final rebuild "
+			echo -e "${_AXE_INFO_MODE} at the end of the build i will reboot your pc which could be automatic or need your assistance, if you get a build fail, follow the instructions, or your nose"
+			echo -e "${_AXE_INFO_MODE} final warning its really easy to fuck up a kernal config and end up with an unbootable system, if you are at all unsure ${bldwht} ANY OTHER KEY ${txtrst} next !"
+			echo -e "${_AXE_INFO_MODE} press${bldwht} y ${txtrst} to build your kernal with a menu,${bldwht} ANY OTHER KEY ${txtrst}to build your kernal without a menu option"
+			read -n1 _AXE_TMP_CHAR
+			if [[ "$_AXE_TMP_CHAR" = "y" ]]; then
+				echo -e "\n"
+				build_linux 0
+				reboot_continue
+				
+			else
+				build_linux 1
+				reboot_continue
+			fi
+		fi
+
+	fi
+	
+	#start of recursive non-toolchain build
+	
+	#set pkg building to -O3 
+	sed -i 's/-O2/-O3/' /etc/makepkg.conf
+	
+	#clean up build manual list 
+	#   delete comments | delete emty lines | delete everything after first space > to file
+	sed '/^\#/d' $_AXE_DIR/build-manual.list | grep -v "^$" | sed 's/ .*//' > "$_AXE_DIR/build-manual-tmp.list"
+	
+	debug_build_manual
+	
+	#clean up build exclude list and add it as start of build-fail list
+	#   delete comments | delete emty lines | delete everything after first space > to file
+	sed '/^\#/d' $_AXE_DIR/build-exclude.list | grep -v "^$" | sed 's/ .*//' > "$_AXE_DIR/build-fail.list"
+	
+	debug_build_fail
+
+	echo "ok start the build you fuckin loop !!" > "$_AXE_DIR/build-targets.list"
+	
+	while [[ -s "$_AXE_DIR/build-targets.list" ]]; do
+		
+		#produce list of packages not!! with i7 packager variable and !not with any as architecture and not lib32
+		#list installed packs | grep not i7 | grep not any arch | delete everything after first space
+		expac "%n %p %a" | grep -v "$_AXE_PACKAGER_NAME" | grep -v "any"  | grep -v "lib32.*" | sed 's/ .*//' > "$_AXE_DIR/build-prospects.list"
+
+		debug_build_prospects
+		
+		diff <(cat $_AXE_DIR/build-prospects.list | sort) <(cat $_AXE_DIR/build-fail.list | sort) | grep \<|cut -f2 -d' ' > "$_AXE_DIR/build-targets.list"
+	
+		debug_build_targets
+	
+		for pkgname in $(cat $_AXE_DIR/build-targets.list); do
+		
+			cat $_AXE_DIR/build-manual-tmp.list | grep -Fx "$pkgname" > "$_AXE_DIR/scratch"
+			if [[ -s "$_AXE_DIR/scratch" ]]; then
+				_AXE_MAN_TMP="user"
+			else
+				_AXE_MAN_TMP=""
+			fi
+			
+			build_pkg "$pkgname" 1 "$_AXE_MAN_TMP"
+			
+		done
+	done
+	
+	#final build stage
+	#first lets rebuild the kernmal with the saved config
+
+	build_linux 2
+	
+	if [[ -s "$_AXE_DIR/final-build-suceeded.stat" ]]; then
+		echo -e "\n"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}detected that the final rebuild has been done ;$_AXE_DIR/build-final-sucsess.stat exists, so obviously not doing that friggin job again!"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}i may be Xtream but thats not Xreamly stupid !"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+	else
+		echo -e "\n"
+		# ok all packages and deps and build deps built, now rebuild all installed packages, minus exclude list and minus anyarch, lib32, toolchain
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}ok all packages and deps and build deps built now time to rebuild everything that needs rebuilding"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst}to continue"
+		read -n1 -s
+	
+		expac "%n %a" | grep -v "any"  | grep -v "lib32.*" | sed 's/ .*//' > "$_AXE_DIR/build-prospects-final.list"
+		
+		debug_build_prospects_final
+		
+		#we will use build-exclude.list since we might have been re-run
+		#   delete comments | delete emty lines | delete everything after first space > to file
+		sed '/^\#/d' $_AXE_DIR/build-exclude.list | grep -v "^$" | sed 's/ .*//' > "$_AXE_DIR/build-fail-final.list"
+		
+		debug_build_fail_final
+		
+		
+		diff <(cat $_AXE_DIR/build-prospects-final.list | sort) <(cat $_AXE_DIR/build-fail-final.list | sort) | grep \<|cut -f2 -d' ' > "$_AXE_DIR/build-targets-final.list"
+		
+		debug_build_targets_final
+		
+		for pkgname in $(cat $_AXE_DIR/build-targets-final.list); do
+		
+			cat $_AXE_DIR/build-manual-tmp.list | grep -Fx "$pkgname" > "$_AXE_DIR/scratch"
+			if [[ -s "$_AXE_DIR/scratch" ]]; then
+				_AXE_MAN_TMP="user"
+			else
+				_AXE_MAN_TMP=""
+			fi
+			
+			build_pkg "$pkgname" 2 "$_AXE_MAN_TMP"
+
+		done
+		
+		
+		echo "good all packages built sucessfully, full built package list at $_AXE_DIR/build-complete-final.list" >> $_AXE_DIR/final-build-suceeded.stat
+		
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}nearly finished now i am going to create a local repo with all your lovely i7 packages, not sure why but seems a good idea"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst} to continue"
+		read -n1 -s
+		repo-add "$_AXE_REPO_DIR/axe.db.tar.gz" $_AXE_REPO_DIR/*.pkg.tar.xz
+		
+		# now to add an entry in /etc/pacman.conf before other entries so we fetch i7 packages as preferance
+		
+		sed -i '/#[testing]/i#axe local repo' /etc/pacman.conf
+		sed -i '/#axe local repo/a[axe]' /etc/pacman.conf
+		sed -i "/[axe]/aServer = file:///$_AXE_REPO_DIR' /etc/pacman.conf
+		
+		#check output if in debug mode 
+		if [[ $_AXE_DEBUG_MODE_YES -eq 1 ]]; then
+			echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}check pacman.conf"
+			echo -e "${_AXE_DEBUG_MODE}${_AXE_FINALISE_MODE}press${bldwht} any key ${txtrst} to continue"
+			read -n1 -s
+			nano /etc/pacman.conf
+		fi	
+		
+		#now if user wishes strip all packages not present in the original package list
+		
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}now this is the final step, and optional, that is why we are paused here"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} you can chose to strip away all those build dependencies you have accumulated while rebuilding your system"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} obviously you still need acess to them when you need to rebuild packages for upgrades, and that is where the local repo"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} i just created comes in, when you use me in update mode the local repo, which will be maintained with $_AXE_PACKAGER_NAME optimised"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} packages only, will be used to fetch build dependencies, which can then be stripped after the build, this ensures no"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} arch standard packages ever get to your extended build chain, ie all the dependencies between the package makefile"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} and gcc, otherwise you can just leave all the dependencies on your system, being arch very few of them will be running in any way"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE} if you want to go for this press y any other key to just leave the system as it is and quit"
+		echo -e "${_AXE_INFO_MODE}${_AXE_FINALISE_MODE}press${bldwht} y ${txtrst} to repo your dependencies ${bldwht} any other key ${txtrst} to not bother and reboot"
+		read -n1 jbfinalstep
+		if [[ "$jbfinalstep" = "y" ]]; then
+
+			#strip the packages not in original-installed-packages.list
+			pacman -Rs $(comm -23 <(pacman -Qeq|sort) <((for i in $(cat $_AXE_DIR/original-installed-packages.list); do pactree -ul $i; done)|sort -u|cut -d ' ' -f 1))
+		
+		else
+			shutdown -r now
+		fi
+		
+	fi
+	
+#end of build section**************************************************************************************************************************************
+
+#start of tidy up section**************************************************************************************************************************************
+	
+	
+#end of tidy up section**************************************************************************************************************************************
+
+
+
+
+
+
+
+
+
